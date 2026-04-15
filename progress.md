@@ -54,34 +54,33 @@
 
 ## Phase 4 — Harness layer
 
-
-- [ ] `agentbus/harness/providers/__init__.py` — `Provider` protocol, `Chunk`, `ToolSchema`, `SystemPrompt`
-- [ ] `agentbus/harness/providers/ollama.py` — `OllamaProvider` (httpx, streaming, context_window)
-- [ ] `agentbus/harness/providers/anthropic.py` — `AnthropicProvider` (SDK, prompt cache via SystemPrompt.render)
-- [ ] `agentbus/harness/providers/openai.py` — `OpenAIProvider` (SDK, base_url for compatible endpoints)
-- [ ] `agentbus/harness/extensions.py` — `Extension` protocol (all hooks default passthrough), pipeline runner
-- [ ] `agentbus/harness/session.py` — `Session`, JSON persistence, `fork()` branching
-- [ ] `agentbus/harness/compaction.py` — `MicroCompact`, `AutoCompact`, `FullCompact` (stretch), constants
-- [ ] `agentbus/harness/loop.py` — agent loop, `HarnessDeps` protocol, `production_deps()`, streaming fallback
-- [ ] `agentbus/harness/__init__.py` — `Harness` public API
-- [ ] `tests/test_harness_loop.py` — fake deps, tool_executor, max_iterations, forced response
-- [ ] `tests/test_harness_session.py` — create, persist, load, fork
-- [ ] `tests/test_harness_compaction.py` — MicroCompact truncation, AutoCompact circuit breaker
-- [ ] `tests/test_harness_extensions.py` — pipeline chaining, tool_call blocking, SystemPrompt render
+- [x] `agentbus/harness/providers/__init__.py` — `Provider` protocol, `Chunk`, `ToolSchema`, `SystemPrompt`
+- [x] `agentbus/harness/providers/ollama.py` — `OllamaProvider` (httpx, streaming, context_window)
+- [x] `agentbus/harness/providers/anthropic.py` — `AnthropicProvider` (SDK, prompt cache via SystemPrompt.render)
+- [x] `agentbus/harness/providers/openai.py` — `OpenAIProvider` (SDK, base_url for compatible endpoints)
+- [x] `agentbus/harness/extensions.py` — `Extension` base class (all hooks default passthrough), pipeline runner functions
+- [x] `agentbus/harness/session.py` — `Session`, JSON persistence, `fork()` branching
+- [x] `agentbus/harness/compaction.py` — `MicroCompact`, `AutoCompact`, `FullCompact`, constants
+- [x] `agentbus/harness/loop.py` — agent loop, `HarnessDeps` protocol, `ProductionDeps`, `production_deps()`, `ChunkAccumulator`
+- [x] `agentbus/harness/__init__.py` — `Harness` public API, exports
+- [x] `tests/test_harness_loop.py` — fake deps, tool_executor, max_iterations, forced response
+- [x] `tests/test_harness_session.py` — create, persist, load, fork
+- [x] `tests/test_harness_compaction.py` — MicroCompact truncation, AutoCompact circuit breaker
+- [x] `tests/test_harness_extensions.py` — pipeline chaining, tool_call blocking, SystemPrompt render
 
 ## Phase 5 — CLI and Launch
-- [ ] `agentbus/cli.py` — `topic list`, `topic echo`, `node list`, `node info`, `graph`
-- [ ] `agentbus/launch.py` — YAML parsing, dynamic import, topic/node registration, `bus.spin()`
-- [ ] `tests/test_cli.py` — graph JSON output via mock socket
-- [ ] `tests/test_launch.py` — parse YAML config, verify registration
+- [x] `agentbus/cli.py` — `topic list`, `topic echo`, `node list`, `node info`, `graph`
+- [x] `agentbus/launch.py` — YAML parsing, dynamic import, topic/node registration, `bus.spin()`
+- [x] `tests/test_cli.py` — graph JSON output via mock socket
+- [x] `tests/test_launch.py` — parse YAML config, verify registration
 
 ## Phase 6 — Integration and examples
-- [ ] `agentbus/nodes/__init__.py`
-- [ ] `agentbus/nodes/observer.py` — `ObserverNode` (subscribes `/system/*`, logs events)
-- [ ] `agentbus/gateway.py` — `GatewayNode` base (abstract `_listen_external`, `_send_external`)
-- [ ] `agentbus/__init__.py` — public API exports (`MessageBus`, `Topic`, `Node`, `Message`, `BusHandle`, `GatewayNode`, `ObserverNode`)
-- [ ] `examples/echo_agent/main.py` — EchoNode + ObserverNode, `spin(max_messages=3)`, no LLM
-- [ ] `tests/test_integration.py` — echo agent e2e, ObserverNode receives lifecycle, GatewayNode subclass
+- [x] `agentbus/nodes/__init__.py`
+- [x] `agentbus/nodes/observer.py` — `ObserverNode` (subscribes `/system/*`, logs events)
+- [x] `agentbus/gateway.py` — `GatewayNode` base (abstract `_listen_external`, `_send_external`)
+- [x] `agentbus/__init__.py` — public API exports (`MessageBus`, `Topic`, `Node`, `Message`, `BusHandle`, `GatewayNode`, `ObserverNode`)
+- [x] `examples/echo_agent/main.py` — EchoNode + ObserverNode, `spin(max_messages=3)`, no LLM
+- [x] `tests/test_integration.py` — echo agent e2e, ObserverNode receives lifecycle, GatewayNode subclass
 
 ---
 

@@ -1,0 +1,2069 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ROS-inspired typed pub/sub message bus for LLM agent orchestration">
+      
+      
+      
+      
+        <link rel="prev" href="../concepts/">
+      
+      
+        <link rel="next" href="../harness/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Bus Layer - AgentBus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bus-layer-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentBus" class="md-header__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentBus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Bus Layer
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentBus" class="md-nav__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentBus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Layer
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#messaget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message[T]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic[T]
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Topic[T]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameterization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameterization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wildcard-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wildcard matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retention-buffer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention buffer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backpressure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backpressure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Node">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifecycle-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle hooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nodestate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeState
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bushandle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BusHandle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BusHandle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topic_history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        topic_history
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#messagebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MessageBus
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MessageBus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spin()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spin_once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spin_once()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publish_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#introspection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introspection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System topics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observernode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ObserverNode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatewaynode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatewayNode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-spin_once-not-spin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use spin_once() not spin()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-until-for-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use until= for integration tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-socket-path-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS socket path limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../harness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Harness Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../launch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Launch Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#messaget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message[T]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic[T]
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Topic[T]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameterization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameterization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wildcard-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wildcard matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retention-buffer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention buffer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backpressure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backpressure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Node">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifecycle-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle hooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nodestate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NodeState
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bushandle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BusHandle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BusHandle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topic_history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        topic_history
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#messagebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MessageBus
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MessageBus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spin()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spin_once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spin_once()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publish_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#introspection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introspection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System topics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observernode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ObserverNode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatewaynode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatewayNode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-spin_once-not-spin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use spin_once() not spin()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-until-for-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use until= for integration tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-socket-path-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS socket path limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bus-layer-reference">Bus Layer Reference<a class="headerlink" href="#bus-layer-reference" title="Permanent link">&para;</a></h1>
+<p>The bus layer is the core pub/sub infrastructure. It has zero LLM-specific
+code — it is equally useful for data pipelines, event systems, and agent
+orchestration.</p>
+<hr />
+<h2 id="messaget">Message[T]<a class="headerlink" href="#messaget" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">Message</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.message</span><span class="w"> </span><span class="kn">import</span> <span class="n">Message</span>  <span class="c1"># same thing</span>
+</code></pre></div>
+<p><code>Message</code> is a frozen Pydantic model. Nodes never construct it — the bus
+builds the envelope at <code>publish()</code> time.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Message</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>               <span class="c1"># UUID4, auto-generated</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>   <span class="c1"># UTC, set at publish time</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">source_node</span><span class="p">:</span> <span class="nb">str</span>      <span class="c1"># set by bus — never forged by nodes</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># the topic name</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">correlation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">T</span>            <span class="c1"># the typed payload</span>
+</code></pre></div>
+<p><strong>Reading payload type at runtime:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># msg.payload is the raw Python object</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="p">,</span> <span class="n">InboundChat</span><span class="p">):</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="n">text</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span>
+</code></pre></div>
+<hr />
+<h2 id="topict">Topic[T]<a class="headerlink" href="#topict" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">Topic</span>
+</code></pre></div>
+<h3 id="parameterization">Parameterization<a class="headerlink" href="#parameterization" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">topic</span> <span class="o">=</span> <span class="n">Topic</span><span class="p">[</span><span class="n">InboundChat</span><span class="p">](</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">topic</span><span class="o">.</span><span class="n">schema</span>   <span class="c1"># → InboundChat</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">topic</span><span class="o">.</span><span class="n">name</span>     <span class="c1"># → &quot;/inbound&quot;</span>
+</code></pre></div>
+<p><code>Topic.__class_getitem__</code> creates a subclass with <code>_schema</code> set at class
+creation time. All constructor arguments are forwarded normally.</p>
+<h3 id="constructor">Constructor<a class="headerlink" href="#constructor" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">Topic</span><span class="p">[</span><span class="n">SchemaType</span><span class="p">](</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">retention</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">backpressure_policy</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;drop-oldest&quot;</span><span class="p">,</span> <span class="s2">&quot;drop-newest&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;drop-oldest&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Topic path, e.g. <code>"/tools/request"</code>. By convention: lowercase, slash-delimited.</td>
+</tr>
+<tr>
+<td><code>retention</code></td>
+<td>Number of recent messages to retain in the buffer. <code>0</code> disables retention.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>Human-readable description shown in <code>agentbus topic list</code>.</td>
+</tr>
+<tr>
+<td><code>backpressure_policy</code></td>
+<td>What to do when a subscriber's queue is full. <code>"drop-oldest"</code> discards the oldest queued message; <code>"drop-newest"</code> discards the incoming message.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wildcard-matching">Wildcard matching<a class="headerlink" href="#wildcard-matching" title="Permanent link">&para;</a></h3>
+<p>The <code>matches(pattern)</code> method tests whether a subscription pattern covers this
+topic. The bus calls this when wiring nodes to topics.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">t</span> <span class="o">=</span> <span class="n">Topic</span><span class="p">[</span><span class="n">InboundChat</span><span class="p">](</span><span class="s2">&quot;/system/lifecycle&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">t</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="s2">&quot;/system/*&quot;</span><span class="p">)</span>    <span class="c1"># True — one segment</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">t</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="s2">&quot;/system/**&quot;</span><span class="p">)</span>   <span class="c1"># True — zero or more segments</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">t</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="s2">&quot;/system/*/x&quot;</span><span class="p">)</span>  <span class="c1"># False — extra segment</span>
+</code></pre></div>
+<h3 id="retention-buffer">Retention buffer<a class="headerlink" href="#retention-buffer" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># After publishing several messages:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">messages</span> <span class="o">=</span> <span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># last 5 messages</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">messages</span> <span class="o">=</span> <span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/inbound&quot;</span><span class="p">)</span>       <span class="c1"># last 10 (default)</span>
+</code></pre></div>
+<p><code>retention=0</code> means history is not kept. Topics with <code>retention=0</code> always
+return an empty list from <code>bus.history()</code>.</p>
+<h3 id="backpressure">Backpressure<a class="headerlink" href="#backpressure" title="Permanent link">&para;</a></h3>
+<p>When a subscriber's queue (default size: 100) is full, the configured policy
+applies and a <code>BackpressureEvent</code> is published to <code>/system/backpressure</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">BackpressureEvent</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">subscriber_node</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">queue_size</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">dropped_message_id</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">policy</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;drop-oldest&quot;</span><span class="p">,</span> <span class="s2">&quot;drop-newest&quot;</span><span class="p">]</span>
+</code></pre></div>
+<hr />
+<h2 id="node">Node<a class="headerlink" href="#node" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">Node</span>
+</code></pre></div>
+<h3 id="class-attributes">Class attributes<a class="headerlink" href="#class-attributes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                              <span class="c1"># required, unique</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">subscriptions</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">publications</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">concurrency</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">concurrency_mode</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;parallel&quot;</span><span class="p">,</span> <span class="s2">&quot;serial&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;parallel&quot;</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Unique identifier. Used in introspection, logs, and <code>source_node</code>.</td>
+</tr>
+<tr>
+<td><code>subscriptions</code></td>
+<td>Topic name patterns this node receives. Wildcards allowed.</td>
+</tr>
+<tr>
+<td><code>publications</code></td>
+<td>Topic name patterns this node may publish to. Wildcards allowed. Must be a superset of topics actually published to, or the bus raises <code>UndeclaredPublicationError</code>.</td>
+</tr>
+<tr>
+<td><code>concurrency</code></td>
+<td>Maximum concurrent <code>on_message</code> calls in <code>"parallel"</code> mode. Ignored in <code>"serial"</code> mode.</td>
+</tr>
+<tr>
+<td><code>concurrency_mode</code></td>
+<td><code>"serial"</code> enforces one <code>on_message</code> at a time. <code>"parallel"</code> allows up to <code>concurrency</code> concurrent calls.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lifecycle-hooks">Lifecycle hooks<a class="headerlink" href="#lifecycle-hooks" title="Permanent link">&para;</a></h3>
+<p>All hooks default to no-ops. Override only what you need.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bus</span><span class="p">:</span> <span class="n">BusHandle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Called once before spin begins. Store the bus handle here.&quot;&quot;&quot;</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Called for each delivered message. msg.topic tells you which topic.&quot;&quot;&quot;</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Called during the shutdown phase. Cancel tasks, close connections.&quot;&quot;&quot;</span>
+</code></pre></div>
+<p><strong>Best practice:</strong> store the bus handle in <code>on_init</code> and use it in
+<code>on_message</code>. Do not hold a reference to <code>MessageBus</code> itself.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;my_node&quot;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">subscriptions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/inbound&quot;</span><span class="p">]</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">publications</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/outbound&quot;</span><span class="p">]</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bus</span><span class="p">:</span> <span class="n">BusHandle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="n">bus</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="n">OutboundChat</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="nodestate">NodeState<a class="headerlink" href="#nodestate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">NodeState</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">NodeState</span><span class="o">.</span><span class="n">CREATED</span>   <span class="c1"># initial state, before on_init</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">NodeState</span><span class="o">.</span><span class="n">RUNNING</span>   <span class="c1"># after on_init completes successfully</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">NodeState</span><span class="o">.</span><span class="n">STOPPED</span>   <span class="c1"># after on_shutdown completes</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">NodeState</span><span class="o">.</span><span class="n">ERROR</span>     <span class="c1"># circuit breaker tripped</span>
+</code></pre></div>
+<hr />
+<h2 id="bushandle">BusHandle<a class="headerlink" href="#bushandle" title="Permanent link">&para;</a></h2>
+<p><code>BusHandle</code> is the capability interface given to nodes in <code>on_init</code>. It is a
+<code>@runtime_checkable</code> Protocol — you can <code>isinstance(bus, BusHandle)</code> in tests.</p>
+<h3 id="publish"><code>publish</code><a class="headerlink" href="#publish" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">correlation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Publishes <code>payload</code> to <code>topic</code>. Raises <code>UndeclaredPublicationError</code> if <code>topic</code>
+is not in the node's <code>publications</code>. Raises <code>TopicSchemaError</code> if <code>payload</code>
+does not match the topic's schema.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="n">OutboundChat</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;hello&quot;</span><span class="p">))</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/tools/result&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">correlation_id</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="request"><code>request</code><a class="headerlink" href="#request" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">request</span><span class="p">(</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="n">reply_on</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Message</span>
+</code></pre></div>
+<p>Publish <code>payload</code> to <code>topic</code> with a generated <code>correlation_id</code>, then await a
+message on <code>reply_on</code> that echoes the same <code>correlation_id</code>. Returns the reply
+<code>Message</code>. Raises <code>RequestTimeoutError</code> on timeout.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">reply</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">request</span><span class="p">(</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="s2">&quot;/tools/request&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="n">ToolRequest</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;search&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}),</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">reply_on</span><span class="o">=</span><span class="s2">&quot;/tools/result&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="p">)</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">result</span><span class="p">:</span> <span class="n">ToolResult</span> <span class="o">=</span> <span class="n">reply</span><span class="o">.</span><span class="n">payload</span>
+</code></pre></div>
+<p>The responding node must pass the correlation_id back:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/tools/result&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">correlation_id</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">)</span>
+</code></pre></div></p>
+<h3 id="topic_history"><code>topic_history</code><a class="headerlink" href="#topic_history" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">topic_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span>
+</code></pre></div>
+<p>Return the last <code>n</code> messages from a topic's retention buffer.</p>
+<hr />
+<h2 id="messagebus">MessageBus<a class="headerlink" href="#messagebus" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">MessageBus</span>
+</code></pre></div>
+<h3 id="constructor_1">Constructor<a class="headerlink" href="#constructor_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">MessageBus</span><span class="p">(</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    <span class="n">heartbeat_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    <span class="n">message_log_maxlen</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;/tmp/agentbus.sock&quot;</span><span class="p">,</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>heartbeat_interval</code></td>
+<td>Seconds between <code>/system/heartbeat</code> publications.</td>
+</tr>
+<tr>
+<td><code>message_log_maxlen</code></td>
+<td>Max messages kept in the internal log (used for introspection <code>echo</code>).</td>
+</tr>
+<tr>
+<td><code>socket_path</code></td>
+<td>Unix socket path for the CLI/introspection server. Pass <code>None</code> to disable.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Testing tip:</strong> Pass <code>socket_path=None</code> in tests to avoid port conflicts and
+the 104-character macOS path limit.</p>
+<h3 id="registration">Registration<a class="headerlink" href="#registration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">bus</span><span class="o">.</span><span class="n">register_topic</span><span class="p">(</span><span class="n">Topic</span><span class="p">[</span><span class="n">InboundChat</span><span class="p">](</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="n">bus</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">PlannerNode</span><span class="p">())</span>
+</code></pre></div>
+<p><code>register_topic</code> raises <code>DuplicateTopicError</code> on name collision.</p>
+<p><code>register_node</code> raises:
+- <code>DuplicateNodeError</code> — name already registered
+- <code>UndeclaredSubscriptionError</code> — node subscribes to a topic that isn't registered</p>
+<p>Topic registration must happen before node registration for subscriptions to
+wire correctly.</p>
+<h3 id="spin"><code>spin()</code><a class="headerlink" href="#spin" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="n">until</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="n">max_messages</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SpinResult</span>
+</code></pre></div>
+<p>Runs through four lifecycle phases:</p>
+<ol>
+<li><strong>VALIDATION</strong> — check topology, log warnings (never raises)</li>
+<li><strong>INIT</strong> — call <code>on_init()</code> on all nodes in parallel</li>
+<li><strong>SPIN</strong> — each node gets its own <code>asyncio.Task</code>; runs until termination</li>
+<li><strong>SHUTDOWN</strong> — cancel tasks, call <code>on_shutdown()</code> on all nodes</li>
+</ol>
+<p><strong>Termination conditions</strong> (checked after each message):
+- <code>until()</code> returns <code>True</code>
+- <code>max_messages</code> messages processed
+- <code>timeout</code> seconds elapsed (wall clock)
+- No args: run until <code>asyncio.CancelledError</code> (e.g. <code>Ctrl-C</code>)</p>
+<p><code>spin()</code> returns a <code>SpinResult</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SpinResult</span><span class="p">:</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    <span class="n">messages_processed</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    <span class="n">per_node</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">NodeStats</span><span class="p">]</span>  <span class="c1"># {&quot;planner&quot;: NodeStats(...)}</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">NodeStats</span><span class="p">:</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    <span class="n">messages_received</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    <span class="n">messages_published</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    <span class="n">errors</span><span class="p">:</span> <span class="nb">int</span>
+</code></pre></div>
+<p><strong>Common termination patterns:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># Stop after all expected outputs arrive in retention buffer:</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    <span class="n">until</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">3</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="p">)</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="c1"># Stop after N total messages:</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span><span class="n">max_messages</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="c1"># Hard time limit:</span>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a><span class="c1"># Combined — whichever triggers first:</span>
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">done</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">60.0</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="spin_once"><code>spin_once()</code><a class="headerlink" href="#spin_once" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin_once</span><span class="p">(</span><span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Message</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Process exactly one queued message across all nodes. Returns the message, or
+<code>None</code> if no message arrives within <code>timeout</code>. This is the <strong>primary testing
+primitive</strong> — use it instead of <code>spin()</code> in tests.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="n">bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">InboundChat</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;hi&quot;</span><span class="p">))</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="n">msg</span> <span class="o">=</span> <span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin_once</span><span class="p">()</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="k">assert</span> <span class="n">msg</span><span class="o">.</span><span class="n">topic</span> <span class="o">==</span> <span class="s2">&quot;/inbound&quot;</span>
+</code></pre></div>
+<h3 id="publish_1"><code>publish()</code><a class="headerlink" href="#publish_1" title="Permanent link">&para;</a></h3>
+<p>Direct bus publication (not via a node):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="n">bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="n">topic_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">source_node</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;_bus_&quot;</span><span class="p">,</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="n">correlation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Message</span>
+</code></pre></div>
+<p>Use this in tests, startup sequences, and <code>seed_messages</code> tasks. This is a
+synchronous method — call it directly without <code>await</code>.</p>
+<h3 id="introspection">Introspection<a class="headerlink" href="#introspection" title="Permanent link">&para;</a></h3>
+<p>All introspection methods are synchronous and safe to call at any time:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="n">bus</span><span class="o">.</span><span class="n">topics</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TopicInfo</span><span class="p">]</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">bus</span><span class="o">.</span><span class="n">nodes</span><span class="p">()</span>  <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodeInfo</span><span class="p">]</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="n">bus</span><span class="o">.</span><span class="n">graph</span><span class="p">()</span>  <span class="o">-&gt;</span> <span class="n">BusGraph</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>TopicInfo:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">TopicInfo</span><span class="p">:</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>    <span class="n">schema_name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>    <span class="n">retention</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>    <span class="n">subscriber_count</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>    <span class="n">message_count</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>    <span class="n">queue_depths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>   <span class="c1"># per-subscriber queue depths</span>
+</code></pre></div>
+<p><strong>NodeInfo:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">NodeInfo</span><span class="p">:</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="n">state</span><span class="p">:</span> <span class="nb">str</span>             <span class="c1"># &quot;CREATED&quot; | &quot;RUNNING&quot; | &quot;STOPPED&quot; | &quot;ERROR&quot;</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="n">concurrency</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>    <span class="n">concurrency_mode</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;parallel&quot; | &quot;serial&quot;</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>    <span class="n">subscriptions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>    <span class="n">publications</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    <span class="n">messages_received</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>    <span class="n">messages_published</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>    <span class="n">errors</span><span class="p">:</span> <span class="nb">int</span>
+</code></pre></div>
+<p><strong>BusGraph:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">BusGraph</span><span class="p">:</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>    <span class="n">nodes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodeInfo</span><span class="p">]</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>    <span class="n">topics</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TopicInfo</span><span class="p">]</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>    <span class="n">edges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Edge</span><span class="p">]</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="k">class</span><span class="w"> </span><span class="nc">Edge</span><span class="p">:</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>    <span class="n">node</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a>    <span class="n">direction</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">,</span> <span class="s2">&quot;pub&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>Async introspection:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="c1"># Block until a specific message arrives:</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="n">msg</span> <span class="o">=</span> <span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>    <span class="s2">&quot;/outbound&quot;</span><span class="p">,</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>    <span class="n">predicate</span><span class="o">=</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">reply_to</span> <span class="o">==</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="p">)</span>
+<a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a>
+<a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a><span class="c1"># Tap a live topic stream:</span>
+<a id="__codelineno-33-9" name="__codelineno-33-9" href="#__codelineno-33-9"></a><span class="k">async</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">bus</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;/tools/request&quot;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<a id="__codelineno-33-10" name="__codelineno-33-10" href="#__codelineno-33-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="system-topics">System topics<a class="headerlink" href="#system-topics" title="Permanent link">&para;</a></h2>
+<p>The bus auto-registers these topics. Nodes must never publish to them directly.</p>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Schema</th>
+<th>Retention</th>
+<th>When published</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/system/lifecycle</code></td>
+<td><code>LifecycleEvent</code></td>
+<td>100</td>
+<td>Node state transitions</td>
+</tr>
+<tr>
+<td><code>/system/heartbeat</code></td>
+<td><code>Heartbeat</code></td>
+<td>1</td>
+<td>Every <code>heartbeat_interval</code> seconds</td>
+</tr>
+<tr>
+<td><code>/system/backpressure</code></td>
+<td><code>BackpressureEvent</code></td>
+<td>0</td>
+<td>When a queue drops a message</td>
+</tr>
+<tr>
+<td><code>/system/telemetry</code></td>
+<td><code>TelemetryEvent</code></td>
+<td>50</td>
+<td>Harness operational events</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LifecycleEvent:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">LifecycleEvent</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    <span class="n">node</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>    <span class="n">event</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;started&quot;</span><span class="p">,</span> <span class="s2">&quot;stopped&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;init_failed&quot;</span><span class="p">]</span>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>    <span class="n">error</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+</code></pre></div>
+<p><strong>Heartbeat:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Heartbeat</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    <span class="n">uptime_s</span><span class="p">:</span> <span class="nb">float</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>    <span class="n">node_count</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>    <span class="n">topic_count</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>    <span class="n">total_messages</span><span class="p">:</span> <span class="nb">int</span>
+<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>    <span class="n">messages_per_second</span><span class="p">:</span> <span class="nb">float</span>   <span class="c1"># rolling 60s window</span>
+<a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>    <span class="n">node_states</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># {&quot;planner&quot;: &quot;RUNNING&quot;, ...}</span>
+<a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>    <span class="n">queue_depths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="c1"># {&quot;planner&quot;: 0, &quot;browser&quot;: 3}</span>
+</code></pre></div>
+<p>Subscribe to <code>/system/*</code> with <code>ObserverNode</code> to get all of these.</p>
+<hr />
+<h2 id="observernode">ObserverNode<a class="headerlink" href="#observernode" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObserverNode</span>
+</code></pre></div>
+<p><code>ObserverNode</code> subscribes to <code>/system/*</code> and logs every lifecycle event,
+backpressure event, and telemetry event. Add it to any bus for free
+structured logging:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="n">bus</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">ObserverNode</span><span class="p">())</span>
+</code></pre></div>
+<p>It stores received events in <code>observer.events: list[Message]</code> for inspection
+after <code>spin()</code>.</p>
+<hr />
+<h2 id="gatewaynode">GatewayNode<a class="headerlink" href="#gatewaynode" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus</span><span class="w"> </span><span class="kn">import</span> <span class="n">GatewayNode</span>
+</code></pre></div>
+<p>Abstract base class for bridging external I/O into the bus. Subclass it to
+connect HTTP servers, message queues, stdin, WebSockets, etc.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyGateway</span><span class="p">(</span><span class="n">GatewayNode</span><span class="p">):</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;http_gateway&quot;</span>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_listen_external</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Called as asyncio.Task during on_init. Read external input here.&quot;&quot;&quot;</span>
+<a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a>        <span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">external_source</span><span class="p">():</span>
+<a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a>            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">publish_external</span><span class="p">(</span>
+<a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>                <span class="n">InboundChat</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="s2">&quot;http&quot;</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">user</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a>            <span class="p">)</span>
+<a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a>
+<a id="__codelineno-39-11" name="__codelineno-39-11" href="#__codelineno-39-11"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send_external</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-39-12" name="__codelineno-39-12" href="#__codelineno-39-12"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Called for each /outbound message. Send it out here.&quot;&quot;&quot;</span>
+<a id="__codelineno-39-13" name="__codelineno-39-13" href="#__codelineno-39-13"></a>        <span class="k">await</span> <span class="n">http_client</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">reply_to</span><span class="p">)</span>
+</code></pre></div>
+<p><code>GatewayNode</code> hardcodes <code>subscriptions = ["/outbound"]</code> and
+<code>publications = ["/inbound"]</code>. Override these class attributes if your gateway
+uses different topic names.</p>
+<hr />
+<h2 id="error-reference">Error reference<a class="headerlink" href="#error-reference" title="Permanent link">&para;</a></h2>
+<p>All errors inherit from <code>AgentBusError</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Exception</th>
+<th>When raised</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TopicSchemaError</code></td>
+<td>Payload type doesn't match topic's schema</td>
+</tr>
+<tr>
+<td><code>UndeclaredPublicationError</code></td>
+<td>Node published to a topic not in its <code>publications</code></td>
+</tr>
+<tr>
+<td><code>UndeclaredSubscriptionError</code></td>
+<td>Node subscribes to a topic not registered on the bus</td>
+</tr>
+<tr>
+<td><code>DuplicateNodeError</code></td>
+<td><code>register_node</code> called with a name already in use</td>
+</tr>
+<tr>
+<td><code>DuplicateTopicError</code></td>
+<td><code>register_topic</code> called with a name already in use</td>
+</tr>
+<tr>
+<td><code>RequestTimeoutError</code></td>
+<td><code>bus.request()</code> or <code>bus.wait_for()</code> timed out</td>
+</tr>
+<tr>
+<td><code>NodeInitError</code></td>
+<td><code>on_init()</code> raised an exception</td>
+</tr>
+<tr>
+<td><code>CircuitBreakerOpenError</code></td>
+<td>Operation rejected because breaker is open</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentBusError</span><span class="p">,</span> <span class="n">TopicSchemaError</span><span class="p">,</span> <span class="n">RequestTimeoutError</span>
+</code></pre></div>
+<hr />
+<h2 id="testing-patterns">Testing patterns<a class="headerlink" href="#testing-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="use-spin_once-not-spin">Use <code>spin_once()</code> not <code>spin()</code><a class="headerlink" href="#use-spin_once-not-spin" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_echo_node</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>    <span class="n">bus</span> <span class="o">=</span> <span class="n">MessageBus</span><span class="p">(</span><span class="n">socket_path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>    <span class="n">bus</span><span class="o">.</span><span class="n">register_topic</span><span class="p">(</span><span class="n">Topic</span><span class="p">[</span><span class="n">InboundChat</span><span class="p">](</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>    <span class="n">bus</span><span class="o">.</span><span class="n">register_topic</span><span class="p">(</span><span class="n">Topic</span><span class="p">[</span><span class="n">OutboundChat</span><span class="p">](</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>    <span class="n">bus</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">EchoNode</span><span class="p">())</span>
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>    <span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">_init_phase</span><span class="p">()</span>
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>    <span class="n">bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">InboundChat</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="s2">&quot;t&quot;</span><span class="p">,</span> <span class="n">sender</span><span class="o">=</span><span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;hello&quot;</span><span class="p">))</span>
+<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a>    <span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin_once</span><span class="p">()</span>
+<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a>
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a>    <span class="n">history</span> <span class="o">=</span> <span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">)</span>
+<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a>    <span class="k">assert</span> <span class="n">history</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;olleh&quot;</span>
+</code></pre></div>
+<h3 id="use-until-for-integration-tests">Use <code>until=</code> for integration tests<a class="headerlink" href="#use-until-for-integration-tests" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_pipeline</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>    <span class="n">bus</span> <span class="o">=</span> <span class="n">MessageBus</span><span class="p">(</span><span class="n">socket_path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>    <span class="c1"># ... register topics and nodes ...</span>
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a>
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a>    <span class="n">bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">InboundChat</span><span class="p">(</span><span class="o">...</span><span class="p">))</span>
+<a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a>    <span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">(</span>
+<a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a>        <span class="n">until</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-42-8" name="__codelineno-42-8" href="#__codelineno-42-8"></a>        <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>
+<a id="__codelineno-42-9" name="__codelineno-42-9" href="#__codelineno-42-9"></a>    <span class="p">)</span>
+<a id="__codelineno-42-10" name="__codelineno-42-10" href="#__codelineno-42-10"></a>
+<a id="__codelineno-42-11" name="__codelineno-42-11" href="#__codelineno-42-11"></a>    <span class="k">assert</span> <span class="n">bus</span><span class="o">.</span><span class="n">history</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;expected&quot;</span>
+</code></pre></div>
+<h3 id="macos-socket-path-limit">macOS socket path limit<a class="headerlink" href="#macos-socket-path-limit" title="Permanent link">&para;</a></h3>
+<p>macOS <code>AF_UNIX</code> paths are limited to 104 characters. Tests that use sockets
+must use short paths:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span><span class="o">,</span><span class="w"> </span><span class="nn">shutil</span>
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">short_tmp</span><span class="p">():</span>
+<a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a>    <span class="n">d</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="s2">&quot;/tmp&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;ab_&quot;</span><span class="p">)</span>
+<a id="__codelineno-43-6" name="__codelineno-43-6" href="#__codelineno-43-6"></a>    <span class="k">yield</span> <span class="n">d</span>
+<a id="__codelineno-43-7" name="__codelineno-43-7" href="#__codelineno-43-7"></a>    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

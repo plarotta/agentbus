@@ -65,5 +65,6 @@ class ConversationTurn(BaseModel):
     role: Literal["user", "assistant", "tool_result"]
     content: str | list[ContentBlock]
     tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None  # set on tool_result turns; links result to its ToolCall
     token_count: int = 0
     timestamp: datetime = Field(default_factory=_utcnow)

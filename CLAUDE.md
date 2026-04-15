@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–3b are complete. Active work is on Phase 4 (harness layer).
+See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–6 are complete. All phases of the MVP are done.
 
 ## What AgentBus Is
 

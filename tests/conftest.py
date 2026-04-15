@@ -1,7 +1,22 @@
+import shutil
+import tempfile
+
 import pytest
 
 from agentbus.schemas.common import InboundChat, OutboundChat, ToolRequest, ToolResult
 from agentbus.schemas.harness import ContentBlock, ConversationTurn, ToolCall
+
+
+@pytest.fixture
+def short_tmp():
+    """Return a short path in /tmp for Unix socket tests.
+
+    macOS limits AF_UNIX paths to 104 characters; pytest's tmp_path often
+    exceeds that. This fixture stays well under the limit.
+    """
+    d = tempfile.mkdtemp(dir="/tmp", prefix="ab_")
+    yield d
+    shutil.rmtree(d, ignore_errors=True)
 
 
 @pytest.fixture

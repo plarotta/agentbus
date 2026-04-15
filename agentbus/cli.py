@@ -1,0 +1,160 @@
+import argparse
+import asyncio
+import json
+from collections.abc import Iterable
+
+from agentbus.launch import launch_sync
+
+DEFAULT_SOCKET_PATH = "/tmp/agentbus.sock"
+
+
+async def _socket_request(
+    payload: dict,
+    *,
+    socket_path: str = DEFAULT_SOCKET_PATH,
+    stream: bool = False,
+) -> list[dict] | dict:
+    reader, writer = await asyncio.open_unix_connection(socket_path)
+    try:
+        writer.write((json.dumps(payload) + "\n").encode())
+        await writer.drain()
+        if stream:
+            responses = []
+            while True:
+                line = await reader.readline()
+                if not line:
+                    break
+                responses.append(json.loads(line))
+            return responses
+        line = await reader.readline()
+        if not line:
+            return {}
+        return json.loads(line)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+def _format_json(data) -> str:
+    return json.dumps(data, indent=2, sort_keys=True)
+
+
+def _format_mermaid(graph: dict) -> str:
+    lines = ["graph TD"]
+    for edge in graph.get("edges", []):
+        node = edge["node"]
+        topic = edge["topic"]
+        if edge["direction"] == "pub":
+            lines.append(f'  "{node}" --> "{topic}"')
+        else:
+            lines.append(f'  "{topic}" --> "{node}"')
+    return "\n".join(lines)
+
+
+def _format_dot(graph: dict) -> str:
+    lines = ["digraph AgentBus {"]
+    for edge in graph.get("edges", []):
+        node = edge["node"]
+        topic = edge["topic"]
+        if edge["direction"] == "pub":
+            lines.append(f'  "{node}" -> "{topic}";')
+        else:
+            lines.append(f'  "{topic}" -> "{node}";')
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def _join_lines(items: Iterable[str]) -> str:
+    return "\n".join(items)
+
+
+def topic_list(*, socket_path: str = DEFAULT_SOCKET_PATH) -> str:
+    data = asyncio.run(_socket_request({"cmd": "topics"}, socket_path=socket_path))
+    return _format_json(data)
+
+
+def topic_echo(topic: str, *, n: int | None = None, socket_path: str = DEFAULT_SOCKET_PATH) -> str:
+    payload = {"cmd": "echo", "topic": topic}
+    if n is not None:
+        payload["n"] = n
+    data = asyncio.run(_socket_request(payload, socket_path=socket_path, stream=True))
+    return _join_lines(json.dumps(item, sort_keys=True) for item in data)
+
+
+def node_list(*, socket_path: str = DEFAULT_SOCKET_PATH) -> str:
+    data = asyncio.run(_socket_request({"cmd": "nodes"}, socket_path=socket_path))
+    return _format_json(data)
+
+
+def node_info(name: str, *, socket_path: str = DEFAULT_SOCKET_PATH) -> str:
+    data = asyncio.run(_socket_request({"cmd": "node_info", "name": name}, socket_path=socket_path))
+    return _format_json(data)
+
+
+def graph(*, format: str = "json", socket_path: str = DEFAULT_SOCKET_PATH) -> str:
+    data = asyncio.run(_socket_request({"cmd": "graph"}, socket_path=socket_path))
+    if format == "json":
+        return _format_json(data)
+    if format == "mermaid":
+        return _format_mermaid(data)
+    if format == "dot":
+        return _format_dot(data)
+    raise ValueError(f"Unsupported graph format: {format}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="agentbus")
+    parser.add_argument("--socket-path", default=DEFAULT_SOCKET_PATH)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    topic_parser = subparsers.add_parser("topic")
+    topic_subparsers = topic_parser.add_subparsers(dest="topic_command", required=True)
+    topic_subparsers.add_parser("list")
+    topic_echo_parser = topic_subparsers.add_parser("echo")
+    topic_echo_parser.add_argument("topic")
+    topic_echo_parser.add_argument("--n", type=int, default=None)
+
+    node_parser = subparsers.add_parser("node")
+    node_subparsers = node_parser.add_subparsers(dest="node_command", required=True)
+    node_subparsers.add_parser("list")
+    node_info_parser = node_subparsers.add_parser("info")
+    node_info_parser.add_argument("name")
+
+    graph_parser = subparsers.add_parser("graph")
+    graph_parser.add_argument("--format", default="json", choices=["json", "mermaid", "dot"])
+
+    launch_parser = subparsers.add_parser("launch")
+    launch_parser.add_argument("config_path")
+
+    return parser
+
+
+def app(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "topic" and args.topic_command == "list":
+        print(topic_list(socket_path=args.socket_path))
+        return 0
+    if args.command == "topic" and args.topic_command == "echo":
+        print(topic_echo(args.topic, n=args.n, socket_path=args.socket_path))
+        return 0
+    if args.command == "node" and args.node_command == "list":
+        print(node_list(socket_path=args.socket_path))
+        return 0
+    if args.command == "node" and args.node_command == "info":
+        print(node_info(args.name, socket_path=args.socket_path))
+        return 0
+    if args.command == "graph":
+        print(graph(format=args.format, socket_path=args.socket_path))
+        return 0
+    if args.command == "launch":
+        launch_sync(args.config_path)
+        return 0
+
+    parser.error("unknown command")
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(app())

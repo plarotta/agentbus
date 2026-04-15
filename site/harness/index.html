@@ -1,0 +1,1919 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ROS-inspired typed pub/sub message bus for LLM agent orchestration">
+      
+      
+      
+      
+        <link rel="prev" href="../bus/">
+      
+      
+        <link rel="next" href="../schemas/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Harness Layer - AgentBus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#harness-layer-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentBus" class="md-header__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentBus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Harness Layer
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../bus/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentBus" class="md-nav__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentBus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Harness Layer
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Harness Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context_window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        context_window
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessionload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session.load()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessionfork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session.fork()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Providers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Providers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anthropicprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AnthropicProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openaiprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAIProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollamaprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OllamaProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systemprompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SystemPrompt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#toolschema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToolSchema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hook-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-extension-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common extension patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-compaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context compaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context compaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microcompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MicroCompact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autocompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoCompact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token estimation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harnessdeps-testing-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HarnessDeps (testing interface)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../launch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Launch Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context_window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        context_window
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessionload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session.load()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sessionfork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session.fork()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Providers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Providers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anthropicprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AnthropicProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openaiprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAIProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollamaprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OllamaProvider
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systemprompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SystemPrompt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#toolschema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToolSchema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hook-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-extension-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common extension patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-compaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context compaction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context compaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microcompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MicroCompact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autocompact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoCompact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token estimation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#harnessdeps-testing-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HarnessDeps (testing interface)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="harness-layer-reference">Harness Layer Reference<a class="headerlink" href="#harness-layer-reference" title="Permanent link">&para;</a></h1>
+<p>The harness is the LLM agent loop. It is a standalone component — it has
+<strong>zero imports from <code>agentbus.bus</code>, <code>agentbus.topic</code>, or <code>agentbus.node</code></strong>.
+The only connection to the bus is the <code>tool_executor</code> callback injected at
+construction time.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>agentbus/harness/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── loop.py         # Harness, HarnessDeps, ProductionDeps
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── session.py      # Session persistence and forking
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── compaction.py   # MicroCompact, AutoCompact, context window management
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── extensions.py   # Extension base class and hook runners
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── providers/
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    ├── __init__.py # Chunk, ToolSchema, SystemPrompt, Provider protocol
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    ├── anthropic.py
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    ├── openai.py
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    └── ollama.py
+</code></pre></div>
+<hr />
+<h2 id="harness">Harness<a class="headerlink" href="#harness" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">Harness</span>
+</code></pre></div>
+<h3 id="constructor">Constructor<a class="headerlink" href="#constructor" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">Harness</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">provider</span><span class="p">:</span> <span class="n">Provider</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">tool_executor</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ToolCall</span><span class="p">],</span> <span class="n">Awaitable</span><span class="p">[</span><span class="n">ToolResult</span><span class="p">]</span> <span class="o">|</span> <span class="n">ToolResult</span><span class="p">],</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">tools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ToolSchema</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">session</span><span class="p">:</span> <span class="n">Session</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">extensions</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Extension</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">deps</span><span class="p">:</span> <span class="n">HarnessDeps</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">max_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">stop</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
+</code></pre></div>
+<p>Either <code>provider</code> or <code>deps</code> must be provided. <code>deps</code> is for testing only —
+pass a <code>provider</code> in production.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>provider</code></td>
+<td>LLM provider instance. Mutually exclusive with <code>deps</code>.</td>
+</tr>
+<tr>
+<td><code>tool_executor</code></td>
+<td>Async or sync callable: <code>(ToolCall) -&gt; ToolResult</code>. Called once per tool invocation.</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>Tool declarations sent to the LLM. Empty list = no tools.</td>
+</tr>
+<tr>
+<td><code>session</code></td>
+<td>Session instance for conversation history. Defaults to a new <code>Session()</code>.</td>
+</tr>
+<tr>
+<td><code>extensions</code></td>
+<td>List of <code>Extension</code> instances applied to each pipeline stage.</td>
+</tr>
+<tr>
+<td><code>deps</code></td>
+<td>Injectable deps for testing (<code>FakeDeps</code> pattern).</td>
+</tr>
+<tr>
+<td><code>max_iterations</code></td>
+<td>Maximum tool-call iterations before forcing a text response. Default: 25.</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td>LLM sampling temperature. Default: 0.0 (deterministic).</td>
+</tr>
+<tr>
+<td><code>max_tokens</code></td>
+<td>Override the provider's default max output tokens.</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td>List of stop sequences.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="run"><code>run()</code><a class="headerlink" href="#run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_input</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p>Append <code>user_input</code> to the session, run the agent loop, and return the final
+text response. The session is saved to disk on each successful response.</p>
+<p><strong>Agent loop behavior:</strong></p>
+<ol>
+<li>Apply <code>on_context</code> extensions to session turns</li>
+<li>Run <code>_maybe_compact()</code> if context window pressure is detected</li>
+<li>Apply <code>on_before_llm</code> extensions</li>
+<li>Call provider, accumulate streaming chunks</li>
+<li>If the response contains tool calls:
+   a. Append the assistant turn (with <code>tool_calls</code>) to the session
+   b. For each tool call: apply <code>on_tool_call</code>, execute via <code>tool_executor</code>,
+      apply <code>on_tool_result</code>, append <code>tool_result</code> turn, run <code>microcompact</code>
+   c. Repeat from step 1 (next iteration)</li>
+<li>Otherwise: apply <code>on_response</code>, append final assistant turn, save session,
+   return text</li>
+</ol>
+<p>If <code>max_iterations</code> is reached, a final provider call is made with <code>tools=[]</code>
+to force a text response.</p>
+<p>On exception: <code>on_error</code> extensions are called. If one returns a fallback
+string, that is returned and the session is saved. Otherwise the exception
+re-raises.</p>
+<h3 id="context_window"><code>context_window</code><a class="headerlink" href="#context_window" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nd">@property</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">context_window</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span>
+</code></pre></div>
+<p>Returns the provider's <code>context_window</code>, or <code>128_000</code> if no provider is set.
+Used by <code>_maybe_compact()</code> to determine when to compact.</p>
+<hr />
+<h2 id="session">Session<a class="headerlink" href="#session" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
+</code></pre></div>
+<h3 id="constructor_1">Constructor<a class="headerlink" href="#constructor_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">Session</span><span class="p">(</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">turns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ConversationTurn</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">file_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>session_id</code></td>
+<td>Unique ID. Defaults to a new UUID4.</td>
+</tr>
+<tr>
+<td><code>turns</code></td>
+<td>Pre-populate with existing turns.</td>
+</tr>
+<tr>
+<td><code>root_dir</code></td>
+<td>Base directory. Defaults to <code>~/.agentbus/sessions</code>.</td>
+</tr>
+<tr>
+<td><code>file_path</code></td>
+<td>Override the computed file path entirely.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Default file layout:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>~/.agentbus/sessions/
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>└── {session_id}/
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    ├── main.json
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    ├── branch_1.json
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    └── branch_2.json
+</code></pre></div>
+<h3 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">session</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">turn</span><span class="p">:</span> <span class="n">ConversationTurn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">session</span><span class="o">.</span><span class="n">total_tokens</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span>        <span class="c1"># sum of token_count across all turns</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">session</span><span class="o">.</span><span class="n">save</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>               <span class="c1"># write to file_path as JSON</span>
+</code></pre></div>
+<p><strong>JSON format:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">&quot;file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main.json&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nt">&quot;turns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">      </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">      </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">      </span><span class="nt">&quot;tool_calls&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">      </span><span class="nt">&quot;tool_call_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">      </span><span class="nt">&quot;token_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">      </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-01-01T00:00:00Z&quot;</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="sessionload"><code>Session.load()</code><a class="headerlink" href="#sessionload" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nd">@classmethod</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;main.json&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Session</span>
+</code></pre></div>
+<p>Load a session from disk. Pass <code>file_name="branch_1.json"</code> to load a fork.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">session</span> <span class="o">=</span> <span class="n">Session</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;abc123&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">session</span> <span class="o">=</span> <span class="n">Session</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">root_dir</span><span class="o">=</span><span class="s2">&quot;/custom/path&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">session</span> <span class="o">=</span> <span class="n">Session</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;branch_2.json&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="sessionfork"><code>Session.fork()</code><a class="headerlink" href="#sessionfork" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">fork</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">from_turn_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Session</span>
+</code></pre></div>
+<p>Create a branch from turn index <code>from_turn_index</code> (inclusive). The branch
+contains turns <code>[0, from_turn_index]</code>. Saves to <code>branch_N.json</code> where N
+auto-increments. The parent session is <strong>not mutated</strong>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">branch</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">fork</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>  <span class="c1"># turns 0-4, saved to branch_1.json</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">branch</span><span class="o">.</span><span class="n">file_path</span><span class="o">.</span><span class="n">name</span>     <span class="c1"># &quot;branch_1.json&quot;</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="nb">len</span><span class="p">(</span><span class="n">branch</span><span class="o">.</span><span class="n">turns</span><span class="p">)</span>         <span class="c1"># 5</span>
+</code></pre></div>
+<hr />
+<h2 id="providers">Providers<a class="headerlink" href="#providers" title="Permanent link">&para;</a></h2>
+<p>All providers satisfy the <code>Provider</code> protocol:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Provider</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">complete</span><span class="p">(</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>        <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>        <span class="n">tools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ToolSchema</span><span class="p">],</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        <span class="n">stop</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>        <span class="n">signal</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">Chunk</span><span class="p">]:</span> <span class="o">...</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    <span class="nd">@property</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">context_window</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count_tokens</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<h3 id="anthropicprovider">AnthropicProvider<a class="headerlink" href="#anthropicprovider" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.providers.anthropic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnthropicProvider</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">AnthropicProvider</span><span class="p">(</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200_000</span><span class="p">,</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="n">system_prompt</span><span class="p">:</span> <span class="n">SystemPrompt</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>Model ID, e.g. <code>"claude-haiku-4-5-20251001"</code>, <code>"claude-opus-4-6"</code></td>
+</tr>
+<tr>
+<td><code>api_key</code></td>
+<td>API key. Defaults to <code>ANTHROPIC_API_KEY</code> env var.</td>
+</tr>
+<tr>
+<td><code>context_window</code></td>
+<td>Override context window size in tokens.</td>
+</tr>
+<tr>
+<td><code>system_prompt</code></td>
+<td><code>SystemPrompt</code> with optional prompt caching.</td>
+</tr>
+</tbody>
+</table>
+<p>Requires the <code>anthropic</code> extra: <code>uv sync --extra anthropic</code>.</p>
+<p>Message format translation:
+- Assistant turns with tool calls → Anthropic content blocks of type <code>"tool_use"</code>
+- Tool result turns → <code>"user"</code> role with <code>"tool_result"</code> content blocks
+  (consecutive results are grouped into one <code>"user"</code> message)</p>
+<h3 id="openaiprovider">OpenAIProvider<a class="headerlink" href="#openaiprovider" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.providers.openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIProvider</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">OpenAIProvider</span><span class="p">(</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128_000</span><span class="p">,</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>Model ID, e.g. <code>"gpt-4o"</code>, <code>"gpt-4o-mini"</code></td>
+</tr>
+<tr>
+<td><code>api_key</code></td>
+<td>API key. Defaults to <code>OPENAI_API_KEY</code> env var.</td>
+</tr>
+<tr>
+<td><code>base_url</code></td>
+<td>Override API base URL for compatible APIs (Azure, Together AI, etc.)</td>
+</tr>
+<tr>
+<td><code>context_window</code></td>
+<td>Override context window size.</td>
+</tr>
+</tbody>
+</table>
+<p>Requires the <code>openai</code> extra: <code>uv sync --extra openai</code>.</p>
+<p>Compatible with any OpenAI-format API via <code>base_url</code>. Tool results are
+formatted as <code>role: "tool"</code> messages.</p>
+<h3 id="ollamaprovider">OllamaProvider<a class="headerlink" href="#ollamaprovider" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.providers.ollama</span><span class="w"> </span><span class="kn">import</span> <span class="n">OllamaProvider</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">OllamaProvider</span><span class="p">(</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:11434&quot;</span><span class="p">,</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">context_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32_768</span><span class="p">,</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="p">)</span>
+</code></pre></div>
+<p>Requires the <code>ollama</code> extra (<code>httpx</code>): <code>uv sync --extra ollama</code>.</p>
+<p>Uses the Ollama HTTP API at <code>/api/chat</code>. No API key needed.</p>
+<hr />
+<h2 id="systemprompt">SystemPrompt<a class="headerlink" href="#systemprompt" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.providers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SystemPrompt</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">SystemPrompt</span><span class="p">(</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="n">static_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">dynamic_suffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>static_prefix</code> is the stable part of the system prompt — it is sent with
+Anthropic's <code>cache_control: ephemeral</code> header for prompt caching. The cache
+break is between <code>static_prefix</code> and <code>dynamic_suffix</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">prompt</span> <span class="o">=</span> <span class="n">SystemPrompt</span><span class="p">(</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="n">static_prefix</span><span class="o">=</span><span class="s2">&quot;You are a coding assistant. ...&quot;</span><span class="p">,</span>  <span class="c1"># cached</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="n">dynamic_suffix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Today&#39;s date: </span><span class="si">{</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>   <span class="c1"># changes each request</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="p">)</span>
+</code></pre></div>
+<p><strong><code>render()</code></strong> returns the list of Anthropic content blocks. If
+<code>dynamic_suffix</code> is empty, only the static block is returned (Anthropic
+rejects empty content blocks).</p>
+<p><strong><code>render_plain()</code></strong> returns a plain string, used by providers that don't
+support block-format system prompts.</p>
+<hr />
+<h2 id="toolschema">ToolSchema<a class="headerlink" href="#toolschema" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.providers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolSchema</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nd">@dataclass</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">ToolSchema</span><span class="p">:</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    <span class="n">input_schema</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+<p>The <code>input_schema</code> follows JSON Schema format:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="n">ToolSchema</span><span class="p">(</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;search&quot;</span><span class="p">,</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Search the web for information.&quot;</span><span class="p">,</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">input_schema</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>        <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>            <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The search query&quot;</span><span class="p">},</span>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>            <span class="s2">&quot;max_results&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span> <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>        <span class="p">},</span>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>        <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">],</span>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>    <span class="p">},</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a><span class="p">)</span>
+</code></pre></div>
+<p>An empty <code>input_schema</code> (default) means the tool takes no arguments.</p>
+<hr />
+<h2 id="extensions">Extensions<a class="headerlink" href="#extensions" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">Extension</span>
+</code></pre></div>
+<p><code>Extension</code> is a base class with passthrough implementations of every hook.
+Subclass it and override only the hooks you need:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">LoggingExtension</span><span class="p">(</span><span class="n">Extension</span><span class="p">):</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_call</span><span class="p">:</span> <span class="n">ToolCall</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolCall</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[tool] </span><span class="si">{</span><span class="n">tool_call</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">tool_call</span><span class="o">.</span><span class="n">arguments</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>        <span class="k">return</span> <span class="n">tool_call</span>   <span class="c1"># returning None would skip execution</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[response] </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="p">)</span><span class="si">}</span><span class="s2"> chars&quot;</span><span class="p">)</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>        <span class="k">return</span> <span class="n">response</span>
+</code></pre></div>
+<p>Pass extensions to <code>Harness</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="n">harness</span> <span class="o">=</span> <span class="n">Harness</span><span class="p">(</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>    <span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">,</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>    <span class="n">tool_executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>    <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>    <span class="n">extensions</span><span class="o">=</span><span class="p">[</span><span class="n">LoggingExtension</span><span class="p">(),</span> <span class="n">RedactSecretsExtension</span><span class="p">()],</span>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="hook-reference">Hook reference<a class="headerlink" href="#hook-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Signature</th>
+<th>Called when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>on_context</code></td>
+<td><code>(messages) → messages</code></td>
+<td>Before each LLM call, with the full session</td>
+</tr>
+<tr>
+<td><code>on_before_llm</code></td>
+<td><code>(messages, tools) → (messages, tools)</code></td>
+<td>Immediately before calling the provider</td>
+</tr>
+<tr>
+<td><code>on_tool_call</code></td>
+<td><code>(ToolCall) → ToolCall \| None</code></td>
+<td>Before executing each tool call. Return <code>None</code> to skip the call entirely.</td>
+</tr>
+<tr>
+<td><code>on_tool_result</code></td>
+<td><code>(ToolCall, ToolResult) → ToolResult</code></td>
+<td>After tool execution, before appending to session</td>
+</tr>
+<tr>
+<td><code>on_before_compact</code></td>
+<td><code>(messages) → messages</code></td>
+<td>Before the compaction check</td>
+</tr>
+<tr>
+<td><code>on_response</code></td>
+<td><code>(str) → str</code></td>
+<td>Before the final text response is returned</td>
+</tr>
+<tr>
+<td><code>on_error</code></td>
+<td><code>(Exception) → str \| None</code></td>
+<td>On unhandled exception. Return a fallback string or <code>None</code> to re-raise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook execution order:</strong> extensions are applied in list order. Each hook
+receives the output of the previous extension. <code>on_tool_call</code> short-circuits if
+any extension returns <code>None</code>. <code>on_error</code> returns the first non-<code>None</code> fallback.</p>
+<h3 id="common-extension-patterns">Common extension patterns<a class="headerlink" href="#common-extension-patterns" title="Permanent link">&para;</a></h3>
+<p><strong>Filter tool calls:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SafetyExtension</span><span class="p">(</span><span class="n">Extension</span><span class="p">):</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">BLOCKED_TOOLS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;shell&quot;</span><span class="p">,</span> <span class="s2">&quot;exec&quot;</span><span class="p">}</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_call</span><span class="p">:</span> <span class="n">ToolCall</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolCall</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>        <span class="k">if</span> <span class="n">tool_call</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">BLOCKED_TOOLS</span><span class="p">:</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>            <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># skip execution</span>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>        <span class="k">return</span> <span class="n">tool_call</span>
+</code></pre></div>
+<p><strong>Inject dynamic context:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ContextExtension</span><span class="p">(</span><span class="n">Extension</span><span class="p">):</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">system_context</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span> <span class="o">=</span> <span class="n">system_context</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>        <span class="n">ctx_turn</span> <span class="o">=</span> <span class="n">ConversationTurn</span><span class="p">(</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>            <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>            <span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[context] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>            <span class="n">token_count</span><span class="o">=</span><span class="n">estimate_tokens</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctx</span><span class="p">),</span>
+<a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>        <span class="p">)</span>
+<a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">ctx_turn</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Redact tool outputs:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">RedactExtension</span><span class="p">(</span><span class="n">Extension</span><span class="p">):</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_tool_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">call</span><span class="p">:</span> <span class="n">ToolCall</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">ToolResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolResult</span><span class="p">:</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>        <span class="n">output</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">output</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>        <span class="n">output</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\b\d</span><span class="si">{4}</span><span class="s2">[-\s]\d</span><span class="si">{4}</span><span class="s2">[-\s]\d</span><span class="si">{4}</span><span class="s2">[-\s]\d</span><span class="si">{4}</span><span class="s2">\b&quot;</span><span class="p">,</span> <span class="s2">&quot;****&quot;</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>        <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="n">output</span><span class="p">})</span>
+</code></pre></div>
+<hr />
+<h2 id="context-compaction">Context compaction<a class="headerlink" href="#context-compaction" title="Permanent link">&para;</a></h2>
+<p>The harness manages context window pressure automatically. When the total token
+count of the session exceeds <code>context_window - AUTOCOMPACT_BUFFER_TOKENS</code>
+(13,000 tokens), autocompaction triggers.</p>
+<h3 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.compaction</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>    <span class="n">AUTOCOMPACT_BUFFER_TOKENS</span><span class="p">,</span>   <span class="c1"># 13_000 — headroom kept for new output</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>    <span class="n">MAX_TOOL_OUTPUT_TOKENS</span><span class="p">,</span>      <span class="c1"># 4_000  — microcompact threshold per tool output</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>    <span class="n">TRUNCATED_TOOL_OUTPUT_TOKENS</span><span class="p">,</span><span class="c1"># 64     — microcompact truncation target</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>    <span class="n">MAX_CONSECUTIVE_COMPACT_FAILURES</span><span class="p">,</span> <span class="c1"># 3 — circuit breaker threshold</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="microcompact">MicroCompact<a class="headerlink" href="#microcompact" title="Permanent link">&para;</a></h3>
+<p>Applied after every tool result. Truncates tool outputs that exceed
+<code>MAX_TOOL_OUTPUT_TOKENS</code> tokens to <code>TRUNCATED_TOOL_OUTPUT_TOKENS</code> tokens,
+replacing the content with <code>[tool output truncated: N tokens -&gt; 64 tokens]</code>.</p>
+<p>This is stateless and cheap — it runs synchronously without any LLM calls.</p>
+<h3 id="autocompact">AutoCompact<a class="headerlink" href="#autocompact" title="Permanent link">&para;</a></h3>
+<p>Triggered when the total context exceeds the window. Uses the provider to
+summarize all but the most recent <code>recent_turns</code> (default: 4) turns, then
+replaces history with a single summary turn followed by the recent turns.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">CompactResult</span><span class="p">:</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ConversationTurn</span><span class="p">]</span>  <span class="c1"># new (shorter) history</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>    <span class="n">compacted</span><span class="p">:</span> <span class="nb">bool</span>                    <span class="c1"># False if compaction was skipped/failed</span>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>               <span class="c1"># the summary text</span>
+</code></pre></div>
+<p>A <code>CircuitBreaker</code> with <code>max_failures=3</code> guards <code>AutoCompact</code>. If compaction
+fails three times in a row, the breaker opens and subsequent compaction
+attempts return <code>compacted=False</code> immediately.</p>
+<h3 id="token-estimation">Token estimation<a class="headerlink" href="#token-estimation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.harness.compaction</span><span class="w"> </span><span class="kn">import</span> <span class="n">estimate_tokens</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="n">estimate_tokens</span><span class="p">(</span><span class="s2">&quot;hello world&quot;</span><span class="p">)</span>  <span class="c1"># → 2</span>
+</code></pre></div>
+<p>Uses <code>max(1, len(text) // 4)</code> — a fast heuristic. Not exact, but consistent.</p>
+<hr />
+<h2 id="harnessdeps-testing-interface">HarnessDeps (testing interface)<a class="headerlink" href="#harnessdeps-testing-interface" title="Permanent link">&para;</a></h2>
+<p><code>HarnessDeps</code> is a Protocol that replaces the provider and compaction
+infrastructure for tests:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">HarnessDeps</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">call_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">Chunk</span><span class="p">]</span> <span class="o">|</span> <span class="n">Awaitable</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">microcompact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ConversationTurn</span><span class="p">]</span> <span class="o">|</span> <span class="n">Awaitable</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">autocompact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CompactResult</span> <span class="o">|</span> <span class="n">Awaitable</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">uuid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+<p><strong>FakeDeps pattern:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">FakeDeps</span><span class="p">:</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">turns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Chunk</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">turns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">turns</span><span class="p">)</span>
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>
+<a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">call_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a>        <span class="n">chunks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turns</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a>        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_stream</span><span class="p">():</span>
+<a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>            <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+<a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a>                <span class="k">yield</span> <span class="n">chunk</span>
+<a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a>        <span class="k">return</span> <span class="n">_stream</span><span class="p">()</span>
+<a id="__codelineno-37-11" name="__codelineno-37-11" href="#__codelineno-37-11"></a>
+<a id="__codelineno-37-12" name="__codelineno-37-12" href="#__codelineno-37-12"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">microcompact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+<a id="__codelineno-37-13" name="__codelineno-37-13" href="#__codelineno-37-13"></a>        <span class="k">return</span> <span class="n">messages</span>
+<a id="__codelineno-37-14" name="__codelineno-37-14" href="#__codelineno-37-14"></a>
+<a id="__codelineno-37-15" name="__codelineno-37-15" href="#__codelineno-37-15"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">autocompact</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+<a id="__codelineno-37-16" name="__codelineno-37-16" href="#__codelineno-37-16"></a>        <span class="k">return</span> <span class="n">CompactResult</span><span class="p">(</span><span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">compacted</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-37-17" name="__codelineno-37-17" href="#__codelineno-37-17"></a>
+<a id="__codelineno-37-18" name="__codelineno-37-18" href="#__codelineno-37-18"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">uuid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-37-19" name="__codelineno-37-19" href="#__codelineno-37-19"></a>        <span class="k">return</span> <span class="s2">&quot;test-session&quot;</span>
+<a id="__codelineno-37-20" name="__codelineno-37-20" href="#__codelineno-37-20"></a>
+<a id="__codelineno-37-21" name="__codelineno-37-21" href="#__codelineno-37-21"></a><span class="c1"># In tests:</span>
+<a id="__codelineno-37-22" name="__codelineno-37-22" href="#__codelineno-37-22"></a><span class="n">deps</span> <span class="o">=</span> <span class="n">FakeDeps</span><span class="p">([[</span><span class="n">Chunk</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;hello&quot;</span><span class="p">)]])</span>
+<a id="__codelineno-37-23" name="__codelineno-37-23" href="#__codelineno-37-23"></a><span class="n">harness</span> <span class="o">=</span> <span class="n">Harness</span><span class="p">(</span><span class="n">deps</span><span class="o">=</span><span class="n">deps</span><span class="p">,</span> <span class="n">tool_executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="p">[])</span>
+<a id="__codelineno-37-24" name="__codelineno-37-24" href="#__codelineno-37-24"></a><span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;say hello&quot;</span><span class="p">)</span>
+<a id="__codelineno-37-25" name="__codelineno-37-25" href="#__codelineno-37-25"></a><span class="k">assert</span> <span class="n">result</span> <span class="o">==</span> <span class="s2">&quot;hello&quot;</span>
+</code></pre></div>
+<p><code>Chunk</code> fields: <code>text</code>, <code>tool_call_id</code>, <code>tool_name</code>, <code>tool_arguments</code>.
+A <code>Chunk</code> with <code>tool_call_id</code> signals a tool invocation. Multiple chunks with
+the same <code>tool_call_id</code> are accumulated (streaming tool argument fragments).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

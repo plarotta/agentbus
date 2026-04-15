@@ -2,22 +2,8 @@
 import asyncio
 import json
 import os
-import shutil
-import tempfile
 
 import pytest
-
-
-@pytest.fixture
-def short_tmp():
-    """Return a short directory path in /tmp.
-
-    macOS limits Unix socket paths to 104 characters; pytest's tmp_path often
-    exceeds that. Using /tmp directly keeps paths short enough.
-    """
-    d = tempfile.mkdtemp(dir="/tmp", prefix="ab_")
-    yield d
-    shutil.rmtree(d, ignore_errors=True)
 
 from agentbus.bus import MessageBus
 from agentbus.errors import RequestTimeoutError

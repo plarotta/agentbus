@@ -1,0 +1,51 @@
+site_name: AgentBus
+site_description: ROS-inspired typed pub/sub message bus for LLM agent orchestration
+repo_url: https://github.com/plarotta/agentbus
+repo_name: plarotta/agentbus
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Concepts: concepts.md
+  - Reference:
+    - Bus Layer: bus.md
+    - Harness Layer: harness.md
+    - Schemas: schemas.md
+    - CLI: cli.md
+    - Launch Config: launch.md
+  - Examples: examples.md
