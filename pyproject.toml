@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentbus"
+version = "0.1.0"
+description = "ROS-inspired typed pub/sub message bus for LLM agent orchestration"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+ollama = ["httpx"]
+anthropic = ["anthropic"]
+openai = ["openai"]
+cli = ["typer", "pyyaml"]
+all = [
+    "httpx",
+    "anthropic",
+    "openai",
+    "typer",
+    "pyyaml",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+agentbus = "agentbus.cli:app"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
