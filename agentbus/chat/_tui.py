@@ -231,7 +231,15 @@ class ChatApp(App[None]):
     def __init__(
         self,
         config: ChatConfig,
-        build_bus: Callable[[], tuple[MessageBus, ChatPlannerNode]],
+        build_bus: Callable[
+            [],
+            tuple[
+                MessageBus,
+                ChatPlannerNode,
+                asyncio.Queue[OutboundChat],
+                asyncio.Queue[PlannerStatus],
+            ],
+        ],
     ) -> None:
         super().__init__()
         self._config = config
@@ -242,8 +250,8 @@ class ChatApp(App[None]):
         self._response_task: asyncio.Task | None = None
         self._status_task: asyncio.Task | None = None
         self._inspect_pattern: str | None = None
-        self._response_queue: asyncio.Queue[OutboundChat] = asyncio.Queue()
-        self._status_queue: asyncio.Queue[PlannerStatus] = asyncio.Queue()
+        self._response_queue: asyncio.Queue[OutboundChat] | None = None
+        self._status_queue: asyncio.Queue[PlannerStatus] | None = None
 
     def compose(self) -> ComposeResult:
         model_str = f"{self._config.provider}/{self._config.model}"
@@ -262,7 +270,12 @@ class ChatApp(App[None]):
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def on_mount(self) -> None:
-        self._bus, self._planner = self._build_bus()
+        (
+            self._bus,
+            self._planner,
+            self._response_queue,
+            self._status_queue,
+        ) = self._build_bus()
         self._bus_task = asyncio.create_task(self._bus.spin())
         self._response_task = asyncio.create_task(self._poll_responses())
         self._status_task = asyncio.create_task(self._poll_status())

@@ -1,8 +1,9 @@
 import asyncio
 import importlib
-import json
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from agentbus.bus import MessageBus
 from agentbus.topic import Topic
@@ -10,10 +11,6 @@ from agentbus.topic import Topic
 
 def _load_yaml_or_json(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
-    try:
-        import yaml  # type: ignore
-    except ModuleNotFoundError:
-        return json.loads(text)
     return yaml.safe_load(text)
 
 

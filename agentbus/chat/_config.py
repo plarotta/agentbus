@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,29 +24,23 @@ class ChatConfig:
     memory: bool = False
 
     def save(self, path: Path = DEFAULT_CONFIG_PATH) -> None:
+        import yaml
+
         data = {
             "provider": self.provider,
             "model": self.model,
             "tools": self.tools,
             "memory": self.memory,
         }
-        try:
-            import yaml  # type: ignore[import-not-found]
-
-            path.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
-        except ModuleNotFoundError:
-            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        path.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> ChatConfig:
-    """Load ChatConfig from a YAML or JSON file."""
-    text = path.read_text(encoding="utf-8")
-    try:
-        import yaml  # type: ignore[import-not-found]
+    """Load ChatConfig from a YAML file."""
+    import yaml
 
-        data = yaml.safe_load(text)
-    except ModuleNotFoundError:
-        data = json.loads(text)
+    text = path.read_text(encoding="utf-8")
+    data = yaml.safe_load(text) or {}
 
     return ChatConfig(
         provider=data.get("provider", "ollama"),

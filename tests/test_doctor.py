@@ -78,14 +78,17 @@ def test_check_socket_path_length_macos_too_long():
 
 
 def test_run_passes_with_minimal_valid_config(tmp_path, monkeypatch, capsys):
+    import tempfile
+
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     cfg = tmp_path / "agentbus.yaml"
     cfg.write_text(
         "provider: anthropic\nmodel: claude-haiku-4-5-20251001\ntools: []\nmemory: false\n"
     )
     monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
-    # Force socket path inside tmp so it doesn't race with a real /tmp/agentbus.sock.
-    code = doctor.run(config_path=cfg, socket_path=str(tmp_path / "agentbus.sock"))
+    # macOS AF_UNIX paths are limited to 103 bytes; pytest's tmp_path is too long.
+    sock_dir = tempfile.mkdtemp(dir="/tmp")
+    code = doctor.run(config_path=cfg, socket_path=f"{sock_dir}/a.sock")
     out = capsys.readouterr().out
     assert "agentbus doctor" in out
     # anthropic SDK is optional; if not installed, this will fail. Tolerate.

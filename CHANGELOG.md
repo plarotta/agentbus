@@ -30,6 +30,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Provider import errors** (anthropic/openai/httpx) raise `SystemExit`
   without a chained traceback, so missing optional extras produce a clean
   one-line message.
+- **`pyyaml` is now a core dependency** (previously in the `cli`/`tui` extras).
+  `agentbus chat` and `agentbus launch` both require YAML parsing at startup;
+  the old silent fallback to `json.loads` produced a baffling
+  `JSONDecodeError` when a user installed the base package and pointed at a
+  YAML config.
 
 ## [0.1.0] - 2026-04-16
 

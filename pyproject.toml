@@ -9,20 +9,20 @@ description = "ROS-inspired typed pub/sub message bus for LLM agent orchestratio
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 ollama = ["httpx"]
 anthropic = ["anthropic"]
 openai = ["openai"]
-cli = ["typer", "pyyaml"]
-tui = ["textual>=0.47.0", "pyyaml"]
+cli = ["typer"]
+tui = ["textual>=0.47.0"]
 all = [
     "httpx",
     "anthropic",
     "openai",
     "typer",
-    "pyyaml",
     "textual>=0.47.0",
 ]
 dev = [
