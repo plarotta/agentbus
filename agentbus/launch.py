@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,8 @@ import yaml
 
 from agentbus.bus import MessageBus
 from agentbus.topic import Topic
+
+logger = logging.getLogger(__name__)
 
 
 def _load_yaml_or_json(path: Path) -> dict[str, Any]:
@@ -49,7 +52,33 @@ def build_bus_from_config(config: dict[str, Any]) -> MessageBus:
             node.concurrency = node_config["concurrency"]
         bus.register_node(node)
 
+    _register_channels(bus, config.get("channels"))
+
     return bus
+
+
+def _register_channels(bus: MessageBus, channels_config: Any) -> None:
+    """Resolve the ``channels:`` block and register one GatewayNode per enabled channel.
+
+    Per-channel construction failures are logged and skipped rather than aborting
+    the bus — one mis-configured plugin shouldn't take down the whole deployment.
+    A fully malformed ``channels:`` block (not a mapping) is still a hard error.
+    """
+    if not channels_config:
+        return
+    from agentbus.channels import (
+        ChannelRuntimeError,
+        load_channels_from_dict,
+    )
+
+    configs = load_channels_from_dict(channels_config)
+    for plugin_cls, validated in configs:
+        try:
+            node = plugin_cls.create_gateway(validated)
+        except ChannelRuntimeError as exc:
+            logger.warning("Skipping channel %s: %s", plugin_cls.name, exc)
+            continue
+        bus.register_node(node)
 
 
 async def launch(config_path: str | Path):

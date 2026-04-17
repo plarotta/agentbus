@@ -34,6 +34,17 @@ pip install "agentbus[ollama]"
 # with CLI tools
 pip install "agentbus[cli]"
 
+# textual TUI for `agentbus chat`
+pip install "agentbus[tui]"
+
+# MCP servers (registers stdio MCP tools with the planner)
+pip install "agentbus[mcp]"
+
+# multi-channel gateways
+pip install "agentbus[slack]"
+pip install "agentbus[telegram]"
+pip install "agentbus[channels]"   # slack + telegram together
+
 # everything
 pip install "agentbus[all]"
 ```
@@ -204,6 +215,8 @@ agentbus topic echo /tools/request
 agentbus node list
 agentbus node info planner
 agentbus graph --format mermaid
+agentbus channels list               # registered channel plugins
+agentbus channels setup slack        # interactive setup wizard
 ```
 
 Or query programmatically:
@@ -248,8 +261,62 @@ The bus auto-registers these topics — nodes never publish to them directly:
 | `/system/heartbeat` | `Heartbeat` | Every 30 seconds |
 | `/system/backpressure` | `BackpressureEvent` | Queue overflow |
 | `/system/telemetry` | `TelemetryEvent` | Harness events |
+| `/system/channels` | `ChannelStatus` | Channel gateway transitions (`starting` / `connected` / `reconnecting` / `error` / `stopped`) |
 
 Subscribe to `/system/**` with `ObserverNode` to get structured logs of everything.
+
+## Integrations
+
+All of the following are optional — omit the section from `agentbus.yaml` and nothing is wired up.
+
+### MCP servers
+
+Spawn [Model Context Protocol](https://modelcontextprotocol.io/) stdio servers and expose their advertised tools to the planner under namespaced names (`mcp__<server>__<tool>`):
+
+```yaml
+# agentbus.yaml
+mcp_servers:
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+```
+
+Install with `uv sync --extra mcp`. The gateway coexists with the built-in tool node — each silently drops tools it doesn't own.
+
+### Memory node
+
+Consolidate chat turns into a local searchable store. Embeddings default to Ollama's `nomic-embed-text`, persisted to a SQLite file with a `memory_search` tool auto-registered with the planner.
+
+```yaml
+memory:
+  enabled: true
+  provider: ollama
+  model: nomic-embed-text
+  base_url: http://localhost:11434
+  db_path: ~/.agentbus/memory.db
+```
+
+Pure-Python cosine similarity — no numpy, no vector-store dependency.
+
+### Multi-channel gateways
+
+Bridge `agentbus chat` to external chat platforms. Each gateway is a `GatewayNode` that publishes to `/inbound` and subscribes to `/outbound`; `OutboundChat.channel` and `channel_name` on the gateway keep multiple channels from stepping on each other. Every gateway also publishes `ChannelStatus` updates to `/system/channels` and is guarded by a 5-failure circuit breaker.
+
+```yaml
+channels:
+  slack:
+    enabled: true
+    app_token: ${SLACK_APP_TOKEN}   # xapp-... (Socket Mode)
+    bot_token: ${SLACK_BOT_TOKEN}   # xoxb-...
+    allowed_channels: ["C01234"]
+    allowed_senders: ["U01234"]
+  telegram:
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    allowed_chats: [12345]
+```
+
+Install with `uv sync --extra slack` / `--extra telegram` / `--extra channels`. Use `agentbus channels setup <name>` to run an interactive wizard that writes the section back to `agentbus.yaml`.
 
 ## Documentation
 

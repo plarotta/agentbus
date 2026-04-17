@@ -19,6 +19,9 @@ openai = ["openai"]
 cli = ["typer"]
 tui = ["textual>=0.47.0"]
 mcp = ["mcp>=1.0"]
+slack = ["slack-bolt>=1.18"]
+telegram = ["httpx"]
+channels = ["slack-bolt>=1.18", "httpx"]
 all = [
     "httpx",
     "anthropic",
@@ -26,6 +29,7 @@ all = [
     "typer",
     "textual>=0.47.0",
     "mcp>=1.0",
+    "slack-bolt>=1.18",
 ]
 dev = [
     "pytest>=8.0",
@@ -126,6 +130,9 @@ module = [
     "agentbus.daemon",
     "agentbus.mcp",
     "agentbus.memory",
+    "agentbus.channels",
+    "agentbus.channels.base",
+    "agentbus.channels.loader",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -141,5 +148,7 @@ module = [
     "yaml",
     "mcp",
     "mcp.*",
+    "slack_bolt",
+    "slack_bolt.*",
 ]
 ignore_missing_imports = true

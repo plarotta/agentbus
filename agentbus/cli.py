@@ -207,6 +207,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_parser.add_argument("--config", default="agentbus.yaml", help="Path to agentbus.yaml")
 
+    # ── channels ─────────────────────────────────────────────────────────────
+    channels_parser = subparsers.add_parser(
+        "channels",
+        help="Manage multi-channel gateways (Slack, Telegram, …)",
+    )
+    channels_sub = channels_parser.add_subparsers(dest="channels_command", required=True)
+
+    channels_list = channels_sub.add_parser("list", help="List registered channel plugins")
+    channels_list.add_argument("--config", default="agentbus.yaml")
+
+    channels_setup = channels_sub.add_parser(
+        "setup",
+        help="Interactive setup for a channel plugin (writes to agentbus.yaml)",
+    )
+    channels_setup.add_argument("channel", help="Channel name (e.g. slack, telegram)")
+    channels_setup.add_argument("--config", default="agentbus.yaml")
+
     # ── daemon ───────────────────────────────────────────────────────────────
     daemon_parser = subparsers.add_parser(
         "daemon",
@@ -318,8 +335,68 @@ def app(argv: list[str] | None = None) -> int:
         return _run_doctor(config_path=args.config, socket_path=args.socket_path)
     if args.command == "daemon":
         return _run_daemon(args)
+    if args.command == "channels":
+        return _run_channels(args)
 
     parser.error("unknown command")
+    return 2
+
+
+def _run_channels(args) -> int:
+    from agentbus.channels import (
+        ChannelRuntimeError,
+        registered_plugins,
+    )
+    from agentbus.channels.loader import _ensure_plugin_imported
+
+    config_path = Path(args.config)
+
+    if args.channels_command == "list":
+        # Force-load builtin plugins so their names show up.
+        for name in ("slack", "telegram"):
+            try:
+                _ensure_plugin_imported(name)
+            except ChannelRuntimeError as exc:
+                print(f"  {name}: unavailable ({exc})", file=sys.stderr)
+        for name, plugin_cls in sorted(registered_plugins().items()):
+            print(f"  {name:10s}  {plugin_cls.__module__}.{plugin_cls.__name__}")
+        return 0
+
+    if args.channels_command == "setup":
+        try:
+            _ensure_plugin_imported(args.channel)
+        except ChannelRuntimeError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        plugin_cls = registered_plugins().get(args.channel)
+        if plugin_cls is None:
+            print(f"error: unknown channel plugin {args.channel!r}", file=sys.stderr)
+            return 1
+
+        import yaml
+
+        existing_full: dict = {}
+        if config_path.exists():
+            existing_full = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        existing_channel = (existing_full.get("channels") or {}).get(args.channel) or {}
+        try:
+            config = plugin_cls.setup_wizard(dict(existing_channel))
+        except (KeyboardInterrupt, EOFError):
+            print("\nSetup cancelled.", file=sys.stderr)
+            return 1
+        except NotImplementedError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+        existing_full.setdefault("channels", {})[args.channel] = config.model_dump()
+        config_path.write_text(
+            yaml.dump(existing_full, default_flow_style=False, sort_keys=False),
+            encoding="utf-8",
+        )
+        print(f"Wrote channels.{args.channel} to {config_path}")
+        return 0
+
+    print(f"unknown channels subcommand: {args.channels_command}", file=sys.stderr)
     return 2
 
 

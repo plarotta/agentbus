@@ -17,8 +17,11 @@ uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
 uv sync --extra tui          # install textual for the chat TUI
 uv sync --extra mcp          # install the MCP SDK for mcp_servers: in agentbus.yaml
+uv sync --extra slack        # install slack-bolt for channels.slack gateway
+uv sync --extra telegram     # install httpx for channels.telegram gateway
+uv sync --extra channels     # install both channel extras at once
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests (344 passing)
+uv run pytest tests/ -v      # run all tests (395 passing)
 uv run pytest tests/test_chat.py -v      # single test file
 uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
@@ -52,6 +55,7 @@ agentbus/
 ├── launch.py                # YAML launcher
 ├── gateway.py               # GatewayNode base, v2 prep
 ├── mcp.py                   # MCP gateway — bridges MCP stdio servers to /tools/request
+├── swarm.py                 # Hub-and-spoke multi-agent orchestration (SwarmAgentNode, SwarmCoordinatorNode)
 ├── daemon.py                # agentbus daemon (pidfile, systemd/launchd templates)
 ├── logging_config.py        # setup_logging(), JSONFormatter, correlation IDs
 ├── doctor.py                # agentbus doctor diagnostic
@@ -69,8 +73,14 @@ agentbus/
 │   ├── _tools.py            # ChatToolNode + TOOL_SCHEMAS/TOOL_HANDLERS (bash, file_read, file_write, code_exec)
 │   ├── _commands.py         # slash-command dispatcher + CommandResult
 │   └── _tui.py              # textual-based split-pane TUI (optional — requires `textual`)
+├── channels/                # Multi-channel gateway plugins (Slack, Telegram)
+│   ├── __init__.py          # ChannelPlugin, ChannelRuntimeError, load_channels_from_dict, register_plugin
+│   ├── base.py              # ChannelPlugin[ConfigT] ABC, MAX_CONSECUTIVE_GATEWAY_FAILURES
+│   ├── loader.py            # _REGISTRY, ChannelsRuntime, open_channels_runtime
+│   ├── slack/               # SlackPlugin + SlackGatewayNode (slack-bolt Socket Mode)
+│   └── telegram/            # TelegramPlugin + TelegramGatewayNode (httpx long-poll)
 ├── schemas/
-│   ├── system.py            # LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent
+│   ├── system.py            # LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent, ChannelStatus
 │   ├── common.py            # InboundChat, OutboundChat, ToolRequest, ToolResult
 │   └── harness.py           # ToolCall, ToolResult, ContentBlock, PlannerStatus, ConversationTurn
 └── nodes/
@@ -98,6 +108,7 @@ Auto-registered by the bus at `__init__` — nodes never publish to these:
 - `/system/heartbeat` — `Heartbeat` snapshot every 30s
 - `/system/backpressure` — `BackpressureEvent` on queue overflow
 - `/system/telemetry` — `TelemetryEvent` from the harness
+- `/system/channels` — `ChannelStatus` from multi-channel gateways
 
 ### Circuit breakers
 Every retry loop uses a `CircuitBreaker` from `utils.py`. Named constants per operation:
@@ -193,6 +204,34 @@ Phase 1–2 tests run without a `MessageBus` instance. `Topic` fan-out tests pas
 - **Failure modes are fail-closed**: startup embedding probe failure → warning + continue without memory (session still runs). Per-turn embedding failure → log + drop (no partial row). Search embedding failure → returns error in the tool result.
 - **Lifecycle**: `open_memory_runtime()` opens the sqlite connection and probes embeddings with `"hello"` before the bus starts. `MemoryRuntime.close()` is called in the runner's `finally`. Same split-ownership model as MCP.
 
+### Multi-channel gateways
+`agentbus/channels/` ports the plugin-per-channel pattern from [openclaw](https://github.com/openclaw/openclaw) in a trimmed form. Two channel subpackages ship in-tree: `channels/slack/` (Socket Mode via `slack-bolt`) and `channels/telegram/` (raw `httpx` long-poll). Each subpackage is self-contained and optional — importing `agentbus.channels` does **not** import the SDKs.
+- **Plugin contract**: `ChannelPlugin[ConfigT]` (`channels/base.py`) exposes `name: ClassVar[str]`, `ConfigModel: ClassVar[type[BaseModel]]`, `setup_wizard(existing) -> BaseModel`, and `create_gateway(config) -> GatewayNode`. Uses PEP 695 generic syntax — ChannelPlugin is not a Pydantic model, so it sidesteps the Pydantic-v2 `Generic[T]` requirement that message.py/topic.py have.
+- **Registry is module-global**. Each plugin subpackage calls `register_plugin(cls)` as an import-time side effect. `load_channels_from_dict` calls `_ensure_plugin_imported(name)` to lazy-import builtin plugin modules so a YAML referring to `slack:` works without the user having to import the subpackage first. Third-party plugins must be imported by the embedder.
+- **Config shape**: `channels:` maps plugin name → block; each block is validated against the plugin's `ConfigModel` before the bus starts. `enabled: false` skips a channel; a bare `false` value does the same. Validation errors bubble as `ChannelRuntimeError` with the channel name prefixed.
+- **Routing via `OutboundChat.channel`**: the planner echoes `InboundChat.channel` → `OutboundChat.channel`, and the base `GatewayNode` filters `_send_external` by `channel_name` (class attr). `None` channel is accepted by every gateway — legacy single-channel deployments and tests don't need to set it. This keeps Slack from trying to send Telegram replies (and vice versa) when both gateways run on the same bus.
+- **Threading context via metadata**: per-channel IDs round-trip in `InboundChat.metadata` → `OutboundChat.metadata`. Slack stores `slack_channel`, `thread_ts`, `ts`; Telegram stores `chat_id`, `message_id`. Gateways read these in `_send_external` to reply in-thread.
+- **`/system/channels` topic**: auto-registered by the bus at `__init__` (retention 50). Every gateway publishes `ChannelStatus(channel, state, detail)` on lifecycle transitions — states are `starting | connected | reconnecting | error | stopped`. `publish_channel_status()` is a no-op when `channel_name` is `None`, so legacy gateways don't need to opt in.
+- **Reconnect + circuit breaker**: each listener loop wraps its transport in a `CircuitBreaker` with `MAX_CONSECUTIVE_GATEWAY_FAILURES = 5`. Tripped breaker → publish `error` status and stop. Protects against burning CPU on a revoked token.
+- **Allowlists are mandatory security floor**: both gateways support `allowed_channels` (Slack channel IDs) / `allowed_chats` (Telegram int IDs) and `allowed_senders` (Slack user IDs). Empty list = allow all (appropriate for DM-only bots). Filtering happens *before* the event is published to `/inbound`, so unauthorized messages never reach the planner.
+- **Slack specifics**: uses `AsyncSocketModeHandler` — no public HTTPS endpoint required. Requires both an app-level token (`xapp-…`, scope `connections:write`) and a bot token (`xoxb-…`). `message` + `app_mention` events only; subtypes (`channel_join`, deleted, edits) and bot-authored messages are filtered. `_require_slack_sdk()` raises `ChannelRuntimeError` with install instructions if slack-bolt isn't installed.
+- **Telegram specifics**: uses httpx (already a transitive dep via `ollama` extra). Long-poll `getUpdates` with `offset` advancement — Telegram's protocol idempotence is driven by the client storing the offset. `long_poll_timeout_s` defaults to 25s (max 60 per Telegram docs). For tests, `TelegramGatewayNode(config, client=fake)` injects a fake httpx-shaped client.
+- **CLI**: `agentbus channels list` prints every registered plugin (force-loads builtin ones); `agentbus channels setup <name>` dispatches to the plugin's `setup_wizard` and writes the resulting `model_dump()` back to `channels.<name>` in `agentbus.yaml`.
+- **Integration point is `launch` / `daemon`, not `chat`**. Chat mode owns its own stdin/TUI I/O; channel gateways are for long-running deployment. `launch.py::_register_channels` loads the block, swallows per-channel `ChannelRuntimeError`s (logs a warning and continues), and registers surviving gateways as nodes before `spin()`.
+- **Deferred on purpose**: multi-account per channel, approvals / interactive replies / typing indicators, Discord / WhatsApp / Signal / iMessage adapters. These were part of openclaw's surface but scope-creep for v1.
+
+### Multi-agent orchestration (swarm)
+`agentbus/swarm.py` implements **hub-and-spoke** multi-agent coordination — a coordinator LLM exposes a `dispatch_subagent` tool that routes to named sub-agents on namespaced topics. Sub-agents never talk to each other; handoffs always go through the coordinator. Inspired by claude-code's Task tool.
+- **Spec-driven**: `SubAgentSpec(name, description, system_prompt, tools, model)`. `name` becomes the topic-namespace component (`/swarm/<name>/inbound`, `/swarm/<name>/outbound`), so it must be URL-safe. `description` is inlined into the dispatch tool's schema so the coordinator LLM picks the right agent without additional round-trips.
+- **One-shot per dispatch**: `SwarmAgentNode.on_message` builds a fresh `Session` + `Harness` every inbound message. Sub-agents are stateless across dispatches — the coordinator owns any long-running conversation. This matches claude-code's Task model: each call is a clean context. (A future "persistent sub-agent" mode would need a per-agent session map + cleanup policy.)
+- **`register_swarm(bus, specs, config, *, timeout_s, provider)`**: the single public entry point. Registers the topic pair per spec, instantiates one `SwarmAgentNode` per spec, registers a single `SwarmCoordinatorNode`, and returns the `ToolSchema` the caller passes to its coordinator planner as `extra_tools=[...]`. Must be called *before* `bus.spin()`. `provider` is a test hook — production callers leave it `None`.
+- **Correlation-ID preservation is the critical invariant**: `SwarmAgentNode` publishes its `OutboundChat` with `correlation_id=msg.correlation_id`. That is what unblocks the coordinator's `bus.request(...)` future on `/swarm/<name>/outbound`. Without it, dispatches hang until timeout.
+- **Silent-drop pattern**: `SwarmCoordinatorNode` subscribes to `/tools/request` alongside `ChatToolNode` / `MCPGatewayNode` / `MemoryNode`; it ignores any request where `tool != "dispatch_subagent"`. Validation errors (unknown agent, empty task) surface as `ToolResult.error`, not exceptions — the coordinator LLM sees them as tool failures and can recover.
+- **Provider system prompts**: `_make_swarm_provider` builds a provider per sub-agent with the spec's system prompt. Anthropic gets it via `SystemPrompt(static_prefix=...)`. For providers without a `system_prompt` attribute (ollama/openai in their current form), the prompt is prepended to the task text at dispatch time (gated on `self._prepend_system_prompt`).
+- **Tool bridge reuses the existing plumbing**: sub-agent tool calls go through `/tools/request` → `ChatToolNode` (or MCPGateway) just like the coordinator's. The spec's `tools` list filters *what the sub-agent's LLM is told about*; the actual tool node decides what runs. So `tools=["bash"]` on a sub-agent means "the LLM sees bash but nothing else" — permission policies still apply downstream.
+- **ClassVar shadowing**: `SwarmAgentNode.__init__` assigns per-instance `name`, `subscriptions`, `publications` (ClassVars on `Node`). Marked `# type: ignore[misc]` — the Node base treats them as class-level but the bus reads them via attribute access, so instance shadowing works at runtime. Same trick in `SwarmCoordinatorNode` for publications.
+- **Deferred on purpose**: peer-to-peer sub-agent communication (mesh topology), persistent per-agent sessions, streaming responses (only final-message is returned), nested swarms (a sub-agent spawning its own swarm).
+
 ## Key Invariants
 
 - `source_node` on a `Message` is always set by the bus, never by the node
@@ -218,6 +257,8 @@ agentbus daemon stop                              # SIGTERM + graceful wait
 agentbus daemon status                            # running/stale/absent
 agentbus daemon install systemd agentbus.yaml   > ~/.config/systemd/user/agentbus.service
 agentbus daemon install launchd agentbus.yaml   > ~/Library/LaunchAgents/com.agentbus.daemon.plist
+agentbus channels list                             # list registered channel plugins
+agentbus channels setup slack                      # wizard → writes channels.slack into agentbus.yaml
 ```
 
 `topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process.

@@ -34,6 +34,17 @@ pip install "agentbus[ollama]"
 # with CLI tools
 pip install "agentbus[cli]"
 
+# textual TUI for `agentbus chat`
+pip install "agentbus[tui]"
+
+# MCP stdio servers (registers their tools with the planner)
+pip install "agentbus[mcp]"
+
+# multi-channel gateways
+pip install "agentbus[slack]"
+pip install "agentbus[telegram]"
+pip install "agentbus[channels]"   # both at once
+
 # everything
 pip install "agentbus[all]"
 ```
@@ -123,7 +134,25 @@ agentbus topic list
 agentbus topic echo /tools/request
 agentbus node list
 agentbus graph --format mermaid
+agentbus channels list               # registered channel plugins
+agentbus channels setup slack        # interactive setup wizard
 ```
+
+## Integrations
+
+Optional, enabled by YAML config or by wiring nodes directly. See
+[`launch.md`](launch.md) for config shapes.
+
+- **MCP servers** — any MCP stdio server can expose its tools to the planner
+  under `mcp__<server>__<tool>` names.
+- **Memory node** — embeds each chat turn to a local SQLite store and
+  registers a `memory_search` tool for retrieval.
+- **Multi-channel gateways** — Slack (Socket Mode) and Telegram (long-poll)
+  ship in-tree; both bridge external messages to `/inbound` / `/outbound`.
+- **Swarm (hub-and-spoke)** — a coordinator LLM delegates to named
+  sub-agents via a `dispatch_subagent` tool; each sub-agent lives on
+  `/swarm/<name>/inbound` + `/swarm/<name>/outbound` and runs a fresh
+  `Harness` per dispatch.
 
 ## System topics
 
@@ -135,3 +164,4 @@ The bus auto-registers these topics — nodes never publish to them directly:
 | `/system/heartbeat` | `Heartbeat` | Every 30 seconds |
 | `/system/backpressure` | `BackpressureEvent` | Queue overflow |
 | `/system/telemetry` | `TelemetryEvent` | Harness events |
+| `/system/channels` | `ChannelStatus` | Multi-channel gateway lifecycle transitions |

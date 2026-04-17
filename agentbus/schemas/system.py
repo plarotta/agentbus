@@ -43,6 +43,19 @@ class BackpressureEvent(BaseModel):
     policy: Literal["drop-oldest", "drop-newest"]
 
 
+class ChannelStatus(BaseModel):
+    """Published to /system/channels by multi-channel gateways on lifecycle
+    transitions and reconnect attempts. Consumed by dashboards, the CLI
+    (``agentbus topic echo /system/channels``), and anything watching for
+    gateway health.
+    """
+
+    channel: str
+    state: Literal["starting", "connected", "reconnecting", "error", "stopped"]
+    detail: str | None = None
+    timestamp: datetime = Field(default_factory=_utcnow)
+
+
 class TelemetryEvent(BaseModel):
     """Published to /system/telemetry by the harness for operational observability."""
 

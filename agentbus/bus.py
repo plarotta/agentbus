@@ -29,7 +29,13 @@ from agentbus.introspection import (
 from agentbus.logging_config import reset_correlation_id, set_correlation_id
 from agentbus.message import Message
 from agentbus.node import Node, NodeHandle, NodeState
-from agentbus.schemas.system import BackpressureEvent, Heartbeat, LifecycleEvent, TelemetryEvent
+from agentbus.schemas.system import (
+    BackpressureEvent,
+    ChannelStatus,
+    Heartbeat,
+    LifecycleEvent,
+    TelemetryEvent,
+)
 from agentbus.topic import Topic, _match_pattern
 
 logger = logging.getLogger(__name__)
@@ -130,6 +136,7 @@ class MessageBus:
         self.register_topic(Topic[Heartbeat]("/system/heartbeat", retention=1))
         self.register_topic(Topic[BackpressureEvent]("/system/backpressure"))
         self.register_topic(Topic[TelemetryEvent]("/system/telemetry", retention=50))
+        self.register_topic(Topic[ChannelStatus]("/system/channels", retention=50))
 
     # ── Registration ──────────────────────────────────────────────────────────
 

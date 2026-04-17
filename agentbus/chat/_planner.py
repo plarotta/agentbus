@@ -172,5 +172,10 @@ class ChatPlannerNode(Node):
             response = f"I encountered an error: {exc}"
         await self._bus.publish(
             "/outbound",
-            OutboundChat(text=response, reply_to=inbound.sender),
+            OutboundChat(
+                text=response,
+                reply_to=inbound.sender,
+                channel=inbound.channel,
+                metadata=dict(inbound.metadata),
+            ),
         )

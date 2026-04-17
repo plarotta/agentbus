@@ -7,6 +7,60 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added (Tier 3 — in progress)
+- **Multi-agent orchestration (swarm).** New `agentbus.swarm` module adds
+  hub-and-spoke coordination: a coordinator LLM exposes a
+  `dispatch_subagent` tool via `register_swarm(bus, specs, config)` that
+  routes to named sub-agents on namespaced topics
+  (`/swarm/<name>/inbound`, `/swarm/<name>/outbound`). Each sub-agent is
+  declared as a `SubAgentSpec(name, description, system_prompt, tools,
+  model)` and runs a *fresh* `Harness` + `Session` per dispatch — no
+  shared state across calls, matching claude-code's Task-tool model.
+  Sub-agents never talk to each other; handoffs go through the
+  coordinator only. The dispatch tool's schema inlines a one-liner
+  description for each sub-agent plus a JSON-schema enum over the
+  available names, so ill-formed dispatches short-circuit at the
+  provider layer. `SwarmCoordinatorNode` subscribes to `/tools/request`
+  with the silent-drop pattern, so it composes cleanly alongside
+  `ChatToolNode`, `MCPGatewayNode`, and `MemoryNode`. Validation errors
+  (unknown agent, empty task) surface as `ToolResult.error` rather than
+  raising. See `examples/swarm/` for a runnable coordinator →
+  researcher + writer example.
+- **Multi-channel gateways.** New `agentbus.channels` package ports the
+  plugin-per-channel architecture from [openclaw](https://github.com/openclaw/openclaw),
+  trimmed to what agentbus needs. Two gateways ship in-tree —
+  `agentbus.channels.slack` (Socket Mode via `slack-bolt`; `uv sync
+  --extra slack`) and `agentbus.channels.telegram` (raw httpx long-poll
+  via `getUpdates`; `uv sync --extra telegram`). Each is a subpackage
+  implementing the `ChannelPlugin[ConfigT]` contract from
+  `agentbus.channels.base` — `name`, `ConfigModel`, `setup_wizard`, and
+  `create_gateway`. Configure via `channels:` in `agentbus.yaml`:
+  ```yaml
+  channels:
+    slack:
+      enabled: true
+      app_token: ${SLACK_APP_TOKEN}
+      bot_token: ${SLACK_BOT_TOKEN}
+      allowed_channels: ["C01234"]
+      allowed_senders: ["U01234"]
+    telegram:
+      enabled: true
+      bot_token: ${TELEGRAM_BOT_TOKEN}
+      allowed_chats: [12345]
+  ```
+  Inbound events go through per-channel allowlists before hitting
+  `/inbound`. `OutboundChat` gains a `channel: str | None` field and a
+  `metadata` dict that round-trips per-channel threading context
+  (Slack `thread_ts`, Telegram `chat_id`/`message_id`) — the planner
+  now echoes `InboundChat.channel` and metadata into the matching
+  `OutboundChat`. The base `GatewayNode` filters outbound by its
+  `channel_name` class attr so multiple gateways coexist on one bus.
+  Every gateway publishes `ChannelStatus` updates on a new
+  `/system/channels` topic (`starting` / `connected` / `reconnecting`
+  / `error` / `stopped`), and each listener loop is guarded by a
+  `CircuitBreaker` with `MAX_CONSECUTIVE_GATEWAY_FAILURES = 5` — five
+  consecutive failures parks the gateway in `error` state instead of
+  hammering a dead token. `agentbus channels list` / `agentbus
+  channels setup <name>` round out the CLI surface.
 - **Memory node.** New `agentbus.memory` module adds a `MemoryNode` that
   pairs inbound/outbound chat turns, embeds the combined text with a
   pluggable `EmbeddingProvider` (default: Ollama `/api/embed` with
