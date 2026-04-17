@@ -1,5 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
+from typing import Any
 
 from agentbus.message import Message
 from agentbus.node import BusHandle, Node
@@ -29,15 +30,13 @@ class GatewayNode(Node, ABC):
         self._listener_task.cancel()
         await asyncio.gather(self._listener_task, return_exceptions=True)
 
-    async def publish_external(self, payload, *, topic: str = "/inbound") -> None:
+    async def publish_external(self, payload: Any, *, topic: str = "/inbound") -> None:
         if self._bus is None:
             raise RuntimeError("GatewayNode is not initialized")
         await self._bus.publish(topic, payload)
 
     @abstractmethod
-    async def _listen_external(self) -> None:
-        ...
+    async def _listen_external(self) -> None: ...
 
     @abstractmethod
-    async def _send_external(self, msg: Message) -> None:
-        ...
+    async def _send_external(self, msg: Message) -> None: ...

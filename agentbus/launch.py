@@ -49,7 +49,7 @@ def build_bus_from_config(config: dict[str, Any]) -> MessageBus:
         kwargs = dict(node_config.get("config", {}))
         node = node_cls(**kwargs)
         if "concurrency" in node_config:
-            setattr(node, "concurrency", node_config["concurrency"])
+            node.concurrency = node_config["concurrency"]
         bus.register_node(node)
 
     return bus

@@ -22,9 +22,10 @@ import random
 import statistics
 from collections import deque
 
+from pydantic import BaseModel
+
 from agentbus import MessageBus, Node, Topic
 from agentbus.message import Message
-from pydantic import BaseModel
 
 NUM_READINGS = 60
 WINDOW_SIZE = 10
@@ -35,6 +36,7 @@ CRITICAL_THRESHOLD = 82.0
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class SensorReading(BaseModel):
     sensor_id: str
@@ -51,13 +53,14 @@ class WindowStats(BaseModel):
 
 class Alert(BaseModel):
     sensor_id: str
-    level: str          # "warning" | "critical" | "resolved"
+    level: str  # "warning" | "critical" | "resolved"
     mean: float
 
 
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
+
 
 class SensorNode(Node):
     """Emits simulated temperature readings with a drift spike after midpoint."""
@@ -192,6 +195,7 @@ def _bar(value: float, low: float, high: float, width: int) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main() -> None:
     bus = MessageBus(socket_path=None)
     bus.register_topic(Topic[SensorReading]("/readings", retention=NUM_READINGS))
@@ -203,7 +207,9 @@ async def main() -> None:
     bus.register_node(AlertNode())
     bus.register_node(DisplayNode())
 
-    print(f"Streaming {NUM_READINGS} readings  (warn >={WARNING_THRESHOLD}  crit >={CRITICAL_THRESHOLD})\n")
+    print(
+        f"Streaming {NUM_READINGS} readings  (warn >={WARNING_THRESHOLD}  crit >={CRITICAL_THRESHOLD})\n"
+    )
 
     await bus.spin(
         until=lambda: len(bus.history("/readings", NUM_READINGS + 1)) >= NUM_READINGS,
@@ -217,7 +223,9 @@ async def main() -> None:
 
     print(f"\n{'─' * 50}")
     print(f"  readings  : {len(readings)}")
-    print(f"  temp range: {min(values):.1f} – {max(values):.1f}  (mean {statistics.mean(values):.1f})")
+    print(
+        f"  temp range: {min(values):.1f} – {max(values):.1f}  (mean {statistics.mean(values):.1f})"
+    )
     print(f"  alerts    : {len(alerts)}")
     for a in alerts:
         print(f"    {a.payload.level:9s}  at mean={a.payload.mean:.1f}")

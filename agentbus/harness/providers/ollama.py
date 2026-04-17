@@ -1,5 +1,6 @@
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from agentbus.harness.providers import Chunk, ToolSchema
 
@@ -95,20 +96,22 @@ class OllamaProvider:
         if stop:
             payload["options"]["stop"] = stop
 
-        async with httpx.AsyncClient(base_url=self.base_url, timeout=60.0) as client:
-            async with client.stream("POST", "/api/chat", json=payload) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    data = json.loads(line)
-                    message = data.get("message", {})
-                    if message.get("content"):
-                        yield Chunk(text=message["content"])
-                    for tool_call in message.get("tool_calls", []):
-                        function = tool_call.get("function", {})
-                        yield Chunk(
-                            tool_call_id=tool_call.get("id"),
-                            tool_name=function.get("name"),
-                            tool_arguments=function.get("arguments", "{}"),
-                        )
+        async with (
+            httpx.AsyncClient(base_url=self.base_url, timeout=60.0) as client,
+            client.stream("POST", "/api/chat", json=payload) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                message = data.get("message", {})
+                if message.get("content"):
+                    yield Chunk(text=message["content"])
+                for tool_call in message.get("tool_calls", []):
+                    function = tool_call.get("function", {})
+                    yield Chunk(
+                        tool_call_id=tool_call.get("id"),
+                        tool_name=function.get("name"),
+                        tool_arguments=function.get("arguments", "{}"),
+                    )

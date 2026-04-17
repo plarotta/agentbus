@@ -1,6 +1,4 @@
 """Round-trip serialization tests for all Phase 1 schemas."""
-import json
-from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -11,6 +9,8 @@ from agentbus.schemas.harness import (
     ConversationTurn,
     PlannerStatus,
     ToolCall,
+)
+from agentbus.schemas.harness import (
     ToolResult as HarnessToolResult,
 )
 from agentbus.schemas.system import (
@@ -28,6 +28,7 @@ def roundtrip(model):
 
 
 # ── common schemas ──────────────────────────────────────────────────────────
+
 
 class TestInboundChat:
     def test_roundtrip(self):
@@ -79,6 +80,7 @@ class TestToolResult:
 
 
 # ── system schemas ───────────────────────────────────────────────────────────
+
 
 class TestLifecycleEvent:
     def test_roundtrip_started(self):
@@ -147,8 +149,12 @@ class TestTelemetryEvent:
 
     def test_all_event_types_valid(self):
         events = [
-            "stall_detected", "context_pressure", "tool_timeout",
-            "model_demotion", "compact_triggered", "breaker_tripped",
+            "stall_detected",
+            "context_pressure",
+            "tool_timeout",
+            "model_demotion",
+            "compact_triggered",
+            "breaker_tripped",
         ]
         for event in events:
             m = TelemetryEvent(event=event, detail="test", session_id="s")  # type: ignore[arg-type]
@@ -156,6 +162,7 @@ class TestTelemetryEvent:
 
 
 # ── harness schemas ──────────────────────────────────────────────────────────
+
 
 class TestToolCall:
     def test_roundtrip(self):
@@ -189,7 +196,14 @@ class TestPlannerStatus:
         assert roundtrip(m).event == "thinking"
 
     def test_all_events_valid(self):
-        events = ["thinking", "tool_dispatched", "tool_received", "compacting", "responding", "error"]
+        events = [
+            "thinking",
+            "tool_dispatched",
+            "tool_received",
+            "compacting",
+            "responding",
+            "error",
+        ]
         for event in events:
             m = PlannerStatus(event=event, iteration=1, context_tokens=0, context_capacity=0.0)  # type: ignore[arg-type]
             assert m.event == event

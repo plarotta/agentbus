@@ -5,7 +5,14 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 from uuid import uuid4
 
-from agentbus.harness.compaction import AUTOCOMPACT_BUFFER_TOKENS, AutoCompact, CompactResult, MicroCompact, estimate_tokens, turn_text
+from agentbus.harness.compaction import (
+    AUTOCOMPACT_BUFFER_TOKENS,
+    AutoCompact,
+    CompactResult,
+    MicroCompact,
+    estimate_tokens,
+    turn_text,
+)
 from agentbus.harness.extensions import (
     Extension,
     run_on_before_compact,
@@ -27,21 +34,17 @@ class HarnessDeps(Protocol):
         messages: list[ConversationTurn],
         tools: list[ToolSchema],
         **kwargs: Any,
-    ) -> AsyncIterator[Chunk] | Awaitable[AsyncIterator[Chunk]]:
-        ...
+    ) -> AsyncIterator[Chunk] | Awaitable[AsyncIterator[Chunk]]: ...
 
     def microcompact(
         self, messages: list[ConversationTurn]
-    ) -> list[ConversationTurn] | Awaitable[list[ConversationTurn]]:
-        ...
+    ) -> list[ConversationTurn] | Awaitable[list[ConversationTurn]]: ...
 
     def autocompact(
         self, messages: list[ConversationTurn]
-    ) -> CompactResult | Awaitable[CompactResult]:
-        ...
+    ) -> CompactResult | Awaitable[CompactResult]: ...
 
-    def uuid(self) -> str:
-        ...
+    def uuid(self) -> str: ...
 
 
 @dataclass(slots=True)
@@ -123,7 +126,9 @@ def _as_provider_messages(turns: Sequence[ConversationTurn]) -> list[dict[str, A
             "content": turn.model_dump(mode="json")["content"],
         }
         if turn.tool_calls:
-            entry["tool_calls"] = [tool_call.model_dump(mode="json") for tool_call in turn.tool_calls]
+            entry["tool_calls"] = [
+                tool_call.model_dump(mode="json") for tool_call in turn.tool_calls
+            ]
         if turn.tool_call_id is not None:
             entry["tool_call_id"] = turn.tool_call_id
         messages.append(entry)
@@ -275,7 +280,9 @@ class Harness:
                             token_count=estimate_tokens(tool_output),
                         )
                     )
-                    self.session.turns = await _maybe_await(self.deps.microcompact(list(self.session.turns)))
+                    self.session.turns = await _maybe_await(
+                        self.deps.microcompact(list(self.session.turns))
+                    )
                 if executed_any:
                     continue
 

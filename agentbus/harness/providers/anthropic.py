@@ -1,5 +1,6 @@
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from agentbus.harness.providers import Chunk, SystemPrompt, ToolSchema
 
@@ -139,11 +140,15 @@ class AnthropicProvider:
                         }
                 elif event.type == "content_block_delta":
                     delta = event.delta
-                    if getattr(delta, "type", None) == "text_delta" and getattr(delta, "text", None):
+                    if getattr(delta, "type", None) == "text_delta" and getattr(
+                        delta, "text", None
+                    ):
                         yield Chunk(text=delta.text)
-                    elif getattr(delta, "type", None) == "input_json_delta":
-                        if event.index in tool_blocks:
-                            tool_blocks[event.index]["json_parts"].append(delta.partial_json)
+                    elif (
+                        getattr(delta, "type", None) == "input_json_delta"
+                        and event.index in tool_blocks
+                    ):
+                        tool_blocks[event.index]["json_parts"].append(delta.partial_json)
                 elif event.type == "content_block_stop":
                     tb = tool_blocks.pop(event.index, None)
                     if tb is not None:

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import dataclasses
 import json
 import logging
@@ -49,9 +50,7 @@ class _BusHandle:
         self._bus = bus
         self._node_name = node_name
 
-    async def publish(
-        self, topic: str, payload: Any, correlation_id: str | None = None
-    ) -> None:
+    async def publish(self, topic: str, payload: Any, correlation_id: str | None = None) -> None:
         handle = self._bus._nodes.get(self._node_name)
         if handle is None:
             raise RuntimeError(f"Node {self._node_name!r} not found in bus")
@@ -62,7 +61,9 @@ class _BusHandle:
                 f"not in declared publications {node.publications!r}"
             )
         handle.messages_published += 1
-        self._bus.publish(topic, payload, source_node=self._node_name, correlation_id=correlation_id)
+        self._bus.publish(
+            topic, payload, source_node=self._node_name, correlation_id=correlation_id
+        )
 
     async def request(
         self,
@@ -78,10 +79,10 @@ class _BusHandle:
         try:
             await self.publish(topic, payload, correlation_id=cid)
             return await asyncio.wait_for(asyncio.shield(future), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise RequestTimeoutError(
                 f"Request on {topic!r} timed out after {timeout}s waiting on {reply_on!r}"
-            )
+            ) from None
         finally:
             self._bus._pending_requests.pop((reply_on, cid), None)
             if not future.done():
@@ -316,7 +317,7 @@ class MessageBus:
             while not stop_event.is_set():
                 try:
                     msg = await asyncio.wait_for(handle.queue.get(), timeout=0.05)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except asyncio.CancelledError:
                     return
@@ -357,7 +358,7 @@ class MessageBus:
                 await asyncio.wait_for(stop_event.wait(), timeout=timeout)
             else:
                 await stop_event.wait()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass  # timeout elapsed — proceed to shutdown
 
         # ── SHUTDOWN ──────────────────────────────────────────────────────────
@@ -404,17 +405,13 @@ class MessageBus:
 
         Commands: topics, nodes, node_info, graph, history, echo
         """
-        try:
+        with contextlib.suppress(FileNotFoundError):
             os.unlink(path)
-        except FileNotFoundError:
-            pass
 
         def _encode(data: object) -> bytes:
             return (json.dumps(data) + "\n").encode()
 
-        async def handle_client(
-            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-        ) -> None:
+        async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             try:
                 while True:
                     line = await reader.readline()
@@ -451,9 +448,7 @@ class MessageBus:
                         t_name = req.get("topic", "")
                         n = req.get("n")
 
-                        async def _stream(
-                            _t: str = t_name, _n: int | None = n
-                        ) -> None:
+                        async def _stream(_t: str = t_name, _n: int | None = n) -> None:
                             async for msg in self.echo(_t, n=_n):
                                 try:
                                     writer.write(_encode(json.loads(msg.model_dump_json())))
@@ -463,7 +458,7 @@ class MessageBus:
 
                         stream_task = asyncio.create_task(_stream())
                         disconnect_task = asyncio.create_task(reader.read(1))
-                        done, pending = await asyncio.wait(
+                        _done, pending = await asyncio.wait(
                             {stream_task, disconnect_task},
                             return_when=asyncio.FIRST_COMPLETED,
                         )
@@ -488,10 +483,8 @@ class MessageBus:
             async with server:
                 await server.serve_forever()
         finally:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 os.unlink(path)
-            except FileNotFoundError:
-                pass
 
     # ── Internal phases ───────────────────────────────────────────────────────
 
@@ -511,7 +504,7 @@ class MessageBus:
                     if t.matches(p):
                         node_subscribers.add(t.name)
 
-        for name, topic in self._topics.items():
+        for name, _topic in self._topics.items():
             if name.startswith("/system/"):
                 continue  # bus-owned — skip
             has_subs = name in node_subscribers
@@ -537,7 +530,7 @@ class MessageBus:
                     "/system/lifecycle",
                     LifecycleEvent(node=handle.node.name, event="started"),
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 handle.state = NodeState.ERROR
                 self.publish(
                     "/system/lifecycle",
@@ -591,7 +584,7 @@ class MessageBus:
         while self._running:
             await asyncio.sleep(self._heartbeat_interval)
             if not self._running:
-                break
+                break  # type: ignore[unreachable]  # flipped concurrently during sleep
             uptime = time.monotonic() - self._start_time
             self.publish(
                 "/system/heartbeat",
@@ -687,15 +680,13 @@ class MessageBus:
             while True:
                 remaining = deadline - loop.time()
                 if remaining <= 0:
-                    raise RequestTimeoutError(
-                        f"wait_for on {topic!r} timed out after {timeout}s"
-                    )
+                    raise RequestTimeoutError(f"wait_for on {topic!r} timed out after {timeout}s")
                 try:
                     msg = await asyncio.wait_for(temp_queue.get(), timeout=remaining)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     raise RequestTimeoutError(
                         f"wait_for on {topic!r} timed out after {timeout}s"
-                    )
+                    ) from None
                 if predicate(msg):
                     return msg
         finally:
@@ -729,7 +720,7 @@ class MessageBus:
             while n is None or count < n:
                 try:
                     msg = await asyncio.wait_for(temp_queue.get(), timeout=0.5)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 if filter is None or filter(msg):
                     yield msg

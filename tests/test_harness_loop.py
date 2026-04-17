@@ -42,7 +42,13 @@ class FakeDeps:
 async def test_harness_loop_executes_tool_then_returns_text(tmp_path):
     deps = FakeDeps(
         [
-            [Chunk(tool_call_id="call-1", tool_name="browser", tool_arguments='{"url":"https://example.com"}')],
+            [
+                Chunk(
+                    tool_call_id="call-1",
+                    tool_name="browser",
+                    tool_arguments='{"url":"https://example.com"}',
+                )
+            ],
             [Chunk(text="done")],
         ]
     )

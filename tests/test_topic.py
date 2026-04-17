@@ -7,8 +7,8 @@ from agentbus.message import Message
 from agentbus.schemas.common import InboundChat, ToolRequest
 from agentbus.topic import Topic
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _chat_msg(text: str = "hi") -> Message:
     return Message(
@@ -19,6 +19,7 @@ def _chat_msg(text: str = "hi") -> Message:
 
 
 # ── schema binding ────────────────────────────────────────────────────────────
+
 
 def test_schema_binding():
     topic = Topic[InboundChat]("/inbound/chat")
@@ -39,6 +40,7 @@ def test_topic_name_and_description():
 
 # ── subscriber management ─────────────────────────────────────────────────────
 
+
 def test_add_and_remove_subscriber():
     topic = Topic[InboundChat]("/inbound/chat")
     q = asyncio.Queue(maxsize=10)
@@ -54,6 +56,7 @@ def test_remove_nonexistent_subscriber_is_noop():
 
 
 # ── fan-out ───────────────────────────────────────────────────────────────────
+
 
 def test_put_delivers_to_all_subscribers():
     topic = Topic[InboundChat]("/inbound/chat")
@@ -89,6 +92,7 @@ def test_removed_subscriber_receives_nothing():
 
 # ── retention buffer ──────────────────────────────────────────────────────────
 
+
 def test_retention_keeps_last_n():
     topic = Topic[InboundChat]("/inbound/chat", retention=3)
     msgs = [_chat_msg(str(i)) for i in range(5)]
@@ -122,6 +126,7 @@ def test_history_all_when_n_is_none():
 
 # ── schema validation ─────────────────────────────────────────────────────────
 
+
 def test_validate_payload_correct_type():
     topic = Topic[InboundChat]("/inbound/chat")
     topic.validate_payload(InboundChat(channel="cli", sender="user", text="ok"))
@@ -140,6 +145,7 @@ def test_validate_payload_error_message_contains_names():
 
 
 # ── backpressure: drop-oldest (default) ───────────────────────────────────────
+
 
 def test_backpressure_drop_oldest_generates_event():
     topic = Topic[InboundChat]("/inbound/chat")  # default policy
@@ -176,6 +182,7 @@ def test_backpressure_drop_oldest_queue_contains_newer_messages():
 
 
 # ── backpressure: drop-newest ─────────────────────────────────────────────────
+
 
 def test_backpressure_drop_newest_generates_event():
     topic = Topic[InboundChat]("/inbound/chat", backpressure_policy="drop-newest")
@@ -223,7 +230,7 @@ def test_backpressure_event_includes_queue_size():
 def test_backpressure_only_for_full_queues():
     topic = Topic[InboundChat]("/inbound/chat")
     q1 = asyncio.Queue(maxsize=10)  # plenty of space
-    q2 = asyncio.Queue(maxsize=1)   # will fill
+    q2 = asyncio.Queue(maxsize=1)  # will fill
     topic.add_subscriber("spacious", q1)
     topic.add_subscriber("tight", q2)
 
@@ -235,6 +242,7 @@ def test_backpressure_only_for_full_queues():
 
 
 # ── wildcard matching ─────────────────────────────────────────────────────────
+
 
 def test_matches_exact():
     topic = Topic[InboundChat]("/inbound/chat")

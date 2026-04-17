@@ -3,8 +3,8 @@ import tempfile
 
 import pytest
 
-from agentbus.schemas.common import InboundChat, OutboundChat, ToolRequest, ToolResult
-from agentbus.schemas.harness import ContentBlock, ConversationTurn, ToolCall
+from agentbus.schemas.common import InboundChat, ToolRequest
+from agentbus.schemas.harness import ToolCall
 
 
 @pytest.fixture

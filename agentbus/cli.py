@@ -1,7 +1,10 @@
 import argparse
 import asyncio
+import contextlib
 import json
+import sys
 from collections.abc import Iterable
+from pathlib import Path
 
 from agentbus.launch import launch_sync
 
@@ -103,10 +106,66 @@ def graph(*, format: str = "json", socket_path: str = DEFAULT_SOCKET_PATH) -> st
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from agentbus import __version__
+
     parser = argparse.ArgumentParser(prog="agentbus")
+    parser.add_argument("--version", action="version", version=f"agentbus {__version__}")
     parser.add_argument("--socket-path", default=DEFAULT_SOCKET_PATH)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    # ── chat ──────────────────────────────────────────────────────────────────
+    chat_parser = subparsers.add_parser(
+        "chat",
+        help="Launch interactive chat mode",
+    )
+    chat_parser.add_argument(
+        "--config",
+        default="agentbus.yaml",
+        metavar="PATH",
+        help="Path to agentbus.yaml (default: ./agentbus.yaml)",
+    )
+    chat_parser.add_argument(
+        "--provider",
+        default=None,
+        help="Override provider from config (ollama, mlx, anthropic, openai)",
+    )
+    chat_parser.add_argument(
+        "--model",
+        default=None,
+        help="Override model from config",
+    )
+    chat_parser.add_argument(
+        "--session",
+        default=None,
+        metavar="ID",
+        help="Resume a previous session by ID",
+    )
+    chat_parser.add_argument(
+        "--no-memory",
+        action="store_true",
+        default=False,
+        help="Disable MemoryNode even if configured",
+    )
+    chat_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Show tool dispatches inline",
+    )
+    chat_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        default=False,
+        help="Suppress tool dispatches (overrides --verbose)",
+    )
+    chat_parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="No TUI — plain stdin/stdout, for piping",
+    )
+
+    # ── topic ─────────────────────────────────────────────────────────────────
     topic_parser = subparsers.add_parser("topic")
     topic_subparsers = topic_parser.add_subparsers(dest="topic_command", required=True)
     topic_subparsers.add_parser("list")
@@ -114,25 +173,82 @@ def build_parser() -> argparse.ArgumentParser:
     topic_echo_parser.add_argument("topic")
     topic_echo_parser.add_argument("--n", type=int, default=None)
 
+    # ── node ──────────────────────────────────────────────────────────────────
     node_parser = subparsers.add_parser("node")
     node_subparsers = node_parser.add_subparsers(dest="node_command", required=True)
     node_subparsers.add_parser("list")
     node_info_parser = node_subparsers.add_parser("info")
     node_info_parser.add_argument("name")
 
+    # ── graph ─────────────────────────────────────────────────────────────────
     graph_parser = subparsers.add_parser("graph")
     graph_parser.add_argument("--format", default="json", choices=["json", "mermaid", "dot"])
 
+    # ── launch ────────────────────────────────────────────────────────────────
     launch_parser = subparsers.add_parser("launch")
     launch_parser.add_argument("config_path")
 
+    # ── doctor ────────────────────────────────────────────────────────────────
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Run local-install diagnostics (python, deps, config, socket)",
+    )
+    doctor_parser.add_argument("--config", default="agentbus.yaml", help="Path to agentbus.yaml")
+
     return parser
+
+
+def _run_chat(args) -> int:
+    """Entry point for `agentbus chat`."""
+    from agentbus.chat._config import first_run_wizard, load_config
+
+    config_path = Path(args.config)
+
+    # First-run: no config file found
+    if not config_path.exists():
+        try:
+            config = first_run_wizard(config_path)
+        except (KeyboardInterrupt, EOFError):
+            print("\nSetup cancelled.", file=sys.stderr)
+            return 1
+    else:
+        config = load_config(config_path)
+
+    # CLI overrides
+    if args.provider:
+        config.provider = args.provider
+    if args.model:
+        config.model = args.model
+    if args.no_memory:
+        config.memory = False
+
+    # verbose precedence: --quiet > --verbose > auto
+    verbose: bool | None = None
+    if args.quiet:
+        verbose = False
+    elif args.verbose:
+        verbose = True
+
+    from agentbus.chat._runner import run_chat
+
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(
+            run_chat(
+                config,
+                headless=args.headless,
+                verbose=verbose,
+                session_id=args.session,
+            )
+        )
+    return 0
 
 
 def app(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "chat":
+        return _run_chat(args)
     if args.command == "topic" and args.topic_command == "list":
         print(topic_list(socket_path=args.socket_path))
         return 0
@@ -151,6 +267,10 @@ def app(argv: list[str] | None = None) -> int:
     if args.command == "launch":
         launch_sync(args.config_path)
         return 0
+    if args.command == "doctor":
+        from agentbus.doctor import run as _run_doctor
+
+        return _run_doctor(config_path=args.config, socket_path=args.socket_path)
 
     parser.error("unknown command")
     return 2

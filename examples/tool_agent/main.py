@@ -20,7 +20,7 @@ Optional env vars:
 import asyncio
 import math
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agentbus.harness import Harness, Session
 from agentbus.harness.providers import SystemPrompt, ToolSchema
@@ -60,9 +60,7 @@ TOOLS = [
         description="Count words and characters in a piece of text.",
         input_schema={
             "type": "object",
-            "properties": {
-                "text": {"type": "string", "description": "The text to analyze."}
-            },
+            "properties": {"text": {"type": "string", "description": "The text to analyze."}},
             "required": ["text"],
         },
     ),
@@ -73,6 +71,7 @@ TOOLS = [
 # Tool executor — called by the Harness whenever the LLM invokes a tool
 # ---------------------------------------------------------------------------
 
+
 async def execute_tool(call: ToolCall) -> ToolResult:
     """Dispatch a ToolCall to the matching implementation."""
     try:
@@ -80,11 +79,11 @@ async def execute_tool(call: ToolCall) -> ToolResult:
             case "calculate":
                 expr = call.arguments.get("expression", "")
                 # Restricted eval: only math module, no builtins.
-                result = eval(expr, {"__builtins__": {}}, {"math": math})  # noqa: S307
+                result = eval(expr, {"__builtins__": {}}, {"math": math})
                 return ToolResult(tool_call_id=call.id, output=str(result))
 
             case "get_time":
-                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
                 return ToolResult(tool_call_id=call.id, output=now)
 
             case "word_count":
@@ -99,13 +98,14 @@ async def execute_tool(call: ToolCall) -> ToolResult:
             case _:
                 return ToolResult(tool_call_id=call.id, error=f"unknown tool: {call.name}")
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return ToolResult(tool_call_id=call.id, error=f"tool error: {exc}")
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     model = os.environ.get("MODEL", "claude-haiku-4-5-20251001")

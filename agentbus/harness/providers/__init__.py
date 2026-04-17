@@ -1,5 +1,6 @@
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Protocol
+from typing import Any, Protocol
 
 from agentbus.schemas.harness import ToolCall
 
@@ -61,15 +62,12 @@ class Provider(Protocol):
         max_tokens: int | None = None,
         stop: list[str] | None = None,
         signal: Any | None = None,
-    ) -> AsyncIterator[Chunk]:
-        ...
+    ) -> AsyncIterator[Chunk]: ...
 
     @property
-    def context_window(self) -> int:
-        ...
+    def context_window(self) -> int: ...
 
-    def count_tokens(self, messages: list[Any]) -> int:
-        ...
+    def count_tokens(self, messages: list[Any]) -> int: ...
 
 
 def chunk_to_tool_call(chunk: Chunk) -> ToolCall | None:

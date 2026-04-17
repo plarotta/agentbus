@@ -30,7 +30,7 @@ Optional env vars:
 import asyncio
 import math
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agentbus import MessageBus, Node, ObserverNode, Topic
 from agentbus.harness import Harness, Session
@@ -70,6 +70,7 @@ TOOLS = [
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
+
 
 class PlannerNode(Node):
     """Receives /inbound messages, runs an LLM loop, routes tool calls via the bus."""
@@ -162,14 +163,15 @@ class OutputNode(Node):
 # Tool implementations (pure functions — no bus coupling)
 # ---------------------------------------------------------------------------
 
+
 async def _run_tool(name: str, params: dict) -> str:
     match name:
         case "calculate":
             expr = params.get("expression", "")
-            result = eval(expr, {"__builtins__": {}}, {"math": math})  # noqa: S307
+            result = eval(expr, {"__builtins__": {}}, {"math": math})
             return str(result)
         case "get_time":
-            return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         case _:
             return f"unknown tool: {name}"
 
@@ -177,6 +179,7 @@ async def _run_tool(name: str, params: dict) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     bus = MessageBus()  # default socket at /tmp/agentbus.sock

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–6 are complete. All phases of the MVP are done.
+See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–6 of the MVP are complete. The `agentbus chat` interactive mode (see `feature-intereactive_mode.md`) is also complete — all 4 phases landed, wired into `agentbus/chat/` and reachable via `agentbus chat`.
 
 ## What AgentBus Is
 
@@ -15,9 +15,13 @@ A ROS-inspired typed pub/sub message bus for LLM agent orchestration. Local-firs
 ```bash
 uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
+uv sync --extra tui          # install textual for the chat TUI
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests
-uv run pytest tests/test_message.py -v   # run a single test file
+uv run pytest tests/ -v      # run all tests (209 passing)
+uv run pytest tests/test_chat.py -v      # single test file
+uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
+uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
+uv run agentbus launch agentbus.yaml     # non-chat YAML launcher
 ```
 
 `asyncio_mode = "auto"` is set in `pyproject.toml`, so async test functions do not need `@pytest.mark.asyncio`.
@@ -35,25 +39,37 @@ Files marked ✓ exist. Others are planned for later phases.
 
 ```
 agentbus/
-├── __init__.py              # public API (populated Phase 6)       ✓ (empty)
-├── bus.py                   # MessageBus, _BusHandle               ✓
-├── topic.py                 # Topic[T], retention buffer           ✓
-├── node.py                  # Node ABC, NodeHandle, BusHandle      ✓
-├── message.py               # Message[T] frozen envelope           ✓
-├── introspection.py         # TopicInfo, NodeInfo, BusGraph, SpinResult ✓
-├── errors.py                # all custom exceptions                ✓
-├── utils.py                 # CircuitBreaker                       ✓
-├── cli.py                   # agentbus CLI (Phase 5)
-├── launch.py                # YAML launcher (Phase 5)
-├── gateway.py               # GatewayNode base, v2 prep (Phase 6)
+├── __init__.py              # public API
+├── bus.py                   # MessageBus, _BusHandle
+├── topic.py                 # Topic[T], retention buffer
+├── node.py                  # Node ABC, NodeHandle, BusHandle protocol
+├── message.py               # Message[T] frozen envelope
+├── introspection.py         # TopicInfo, NodeInfo, BusGraph, SpinResult (dataclasses only)
+├── errors.py                # AgentBusError hierarchy
+├── utils.py                 # CircuitBreaker
+├── cli.py                   # agentbus CLI — chat, topic, node, graph, launch
+├── launch.py                # YAML launcher
+├── gateway.py               # GatewayNode base, v2 prep
 ├── harness/                 # LLM harness — zero imports from agentbus.bus/topic/node
-│   └── providers/
+│   ├── loop.py              # Harness main loop
+│   ├── session.py           # Session persistence (~/.agentbus/sessions/<id>/main.json)
+│   ├── compaction.py        # Context compaction
+│   ├── extensions.py        # HarnessDeps, hooks
+│   └── providers/           # anthropic.py, openai.py, ollama.py (+ SystemPrompt, ToolSchema)
+├── chat/                    # Interactive `agentbus chat` mode (see below)
+│   ├── __init__.py          # public API: run_chat, ChatSession, ChatConfig, load_config, first_run_wizard
+│   ├── _config.py           # ChatConfig dataclass, load_config, first_run_wizard
+│   ├── _runner.py           # ChatSession (bus wiring, headless loop, TUI dispatch)
+│   ├── _planner.py          # ChatPlannerNode (wraps Harness, bridges tool calls through the bus)
+│   ├── _tools.py            # ChatToolNode + TOOL_SCHEMAS/TOOL_HANDLERS (bash, file_read, file_write, code_exec)
+│   ├── _commands.py         # slash-command dispatcher + CommandResult
+│   └── _tui.py              # textual-based split-pane TUI (optional — requires `textual`)
 ├── schemas/
-│   ├── system.py            # LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent ✓
-│   ├── common.py            # InboundChat, OutboundChat, ToolRequest, ToolResult              ✓
-│   └── harness.py           # ToolCall, ToolResult, ContentBlock, PlannerStatus, ConversationTurn            ✓
+│   ├── system.py            # LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent
+│   ├── common.py            # InboundChat, OutboundChat, ToolRequest, ToolResult
+│   └── harness.py           # ToolCall, ToolResult, ContentBlock, PlannerStatus, ConversationTurn
 └── nodes/
-    └── observer.py          # ObserverNode (Phase 6)
+    └── observer.py          # ObserverNode
 ```
 
 ## Key Implementation Patterns
@@ -151,15 +167,33 @@ Phase 1–2 tests run without a `MessageBus` instance. `Topic` fan-out tests pas
 - The harness has zero imports from the bus layer — bridge is always via callback
 - `spin_once()` is the primary testing primitive
 
-## CLI (target — Phase 5)
+## CLI
 
 ```bash
+agentbus chat [--config agentbus.yaml] [--provider ...] [--model ...] \
+              [--session ID] [--no-memory] [--verbose|--quiet] [--headless]
 agentbus topic list
 agentbus topic echo /tools/request
 agentbus node list
 agentbus node info planner
-agentbus graph --format mermaid
+agentbus graph --format mermaid        # json | mermaid | dot
 agentbus launch agentbus.yaml
 ```
 
-Connects to running bus via Unix socket at `/tmp/agentbus.sock`.
+`topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process.
+
+## Chat mode architecture
+
+`agentbus chat` wires up a full bus session for an interactive LLM conversation. Entry: `cli.py::_run_chat` → `chat._runner.run_chat` → `ChatSession.run`.
+
+- **Config discovery**: `agentbus.yaml` in the CWD. If absent, `first_run_wizard` (in `chat/_config.py`) prompts and writes one. The wizard uses `input()` only — no external TUI deps required to bootstrap.
+- **ChatConfig fields**: `provider` (ollama/mlx/anthropic/openai), `model`, `tools` (list of tool names), `memory` (bool). CLI flags `--provider/--model/--no-memory` override loaded config.
+- **Provider validation is eager**: `_planner._make_provider` runs *before* bus setup and raises `SystemExit` with an install hint if the provider's optional package (e.g. `anthropic`, `openai`, `httpx`) is missing. Fail-fast, never mid-conversation. Do not defer this check into `on_init`.
+- **Topics registered by ChatSession** (not auto-registered by the bus): `/inbound` (InboundChat, retention 50), `/outbound` (OutboundChat, retention 50), `/tools/request` (ToolRequest, retention 20), `/tools/result` (ToolResult, retention 20), `/planning/status` (PlannerStatus, retention 20).
+- **Nodes**: `ChatPlannerNode` (subscribes `/inbound`, publishes `/outbound`, `/tools/request`, `/planning/status`; `concurrency_mode="serial"`), `ChatToolNode` (subscribes `/tools/request`, publishes `/tools/result`), `_ChatCaptureNode` (read-only bridge: `/outbound` and `/planning/status` → asyncio Queues the runner awaits).
+- **Tool-call bridge**: the planner's `tool_executor` callback calls `bus.request("/tools/request", ..., reply_on="/tools/result", timeout=60)` — this is the ONLY path from harness → bus. `ChatToolNode.on_message` executes the handler and publishes `BusToolResult` with `correlation_id=msg.correlation_id` so the request future resolves. `HarnessToolResult` and `BusToolResult` are mapped explicitly in `tool_executor`.
+- **Known-benign log filter**: `_ChatBusFilter` is installed on `agentbus.bus` logger during `ChatSession.run()` to suppress "no publishers" (for `/inbound`, which the runner publishes directly) and "no subscribers" (for `/tools/result`, which uses pending futures). Removed in `finally`.
+- **I/O modes**, selected at `_run_inner`: headless stdin/stdout (always available), verbose headless (prints `↳ tool_name` lines from `/planning/status`), and textual TUI (only when stdout is a TTY AND `textual` is importable AND `--headless` is not set). TUI lives in `chat/_tui.py`; test files mock it out.
+- **Session persistence**: `Session` objects at `~/.agentbus/sessions/<uuid>/main.json`. Resume with `agentbus chat --session <id>`. `_cmd_session_list` reads from `DEFAULT_SESSION_ROOT` in `harness/session.py`.
+- **Slash commands**: parsed by `chat/_commands.py::handle_command`. Returns a `CommandResult` with fields `output`, `quit`, `inspect_toggle` (TUI-only signal), `error`. New commands should return `CommandResult`, never print directly — the runner/TUI owns the output surface.
+- **Tool definitions** live in `chat/_tools.py::TOOL_SCHEMAS` (LLM-facing JSON schema) and `TOOL_HANDLERS` (async handlers). Adding a tool requires an entry in both dicts plus listing its name in `ChatConfig.tools`.

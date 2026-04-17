@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ToolCall(BaseModel):
@@ -45,12 +45,12 @@ class PlannerStatus(BaseModel):
     """
 
     event: Literal[
-        "thinking",        # LLM call started
-        "tool_dispatched", # tool call sent to bus
-        "tool_received",   # tool result received
-        "compacting",      # context window compaction triggered
-        "responding",      # final response being generated
-        "error",           # harness error
+        "thinking",  # LLM call started
+        "tool_dispatched",  # tool call sent to bus
+        "tool_received",  # tool result received
+        "compacting",  # context window compaction triggered
+        "responding",  # final response being generated
+        "error",  # harness error
     ]
     iteration: int
     context_tokens: int

@@ -1,13 +1,15 @@
 import asyncio
 from collections import deque
-from typing import Any, Literal
+from typing import Any, Generic, Literal, TypeVar
 
 from agentbus.errors import TopicSchemaError
 from agentbus.message import Message
 from agentbus.schemas.system import BackpressureEvent
 
+T = TypeVar("T")
 
-class Topic:
+
+class Topic(Generic[T]):
     """Typed pub/sub topic with fan-out, retention, and backpressure.
 
     Must be parameterized with a schema type before instantiation:
@@ -21,7 +23,11 @@ class Topic:
 
     _schema: type  # set per-subclass by __class_getitem__
 
-    def __class_getitem__(cls, schema_type: type) -> type:
+    def __class_getitem__(cls, schema_type: type) -> type["Topic"]:
+        # Runtime override: returns a concrete subclass bound to schema_type, so
+        # `Topic[X]("/t")` produces an instance whose validate_payload checks X.
+        # mypy's Generic[T] machinery handles the static side; this override
+        # intentionally diverges at runtime.
         return type(
             f"Topic[{schema_type.__name__}]",
             (cls,),
@@ -61,8 +67,7 @@ class Topic:
         """Raise TopicSchemaError if payload is not an instance of the topic's schema."""
         if not isinstance(payload, self.schema):
             raise TopicSchemaError(
-                f"Topic '{self.name}' expects {self.schema.__name__}, "
-                f"got {type(payload).__name__}"
+                f"Topic '{self.name}' expects {self.schema.__name__}, got {type(payload).__name__}"
             )
 
     def put(self, msg: Message) -> list[BackpressureEvent]:
@@ -144,10 +149,7 @@ def _match_parts(p_parts: list[str], n_parts: list[str]) -> bool:
         return False
     if p_parts[0] == "**":
         # Consume zero or more name segments.
-        for i in range(len(n_parts) + 1):
-            if _match_parts(p_parts[1:], n_parts[i:]):
-                return True
-        return False
+        return any(_match_parts(p_parts[1:], n_parts[i:]) for i in range(len(n_parts) + 1))
     if not n_parts:
         return False
     if p_parts[0] == "*" or p_parts[0] == n_parts[0]:

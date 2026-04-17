@@ -1,5 +1,6 @@
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from agentbus.harness.providers import Chunk, ToolSchema
 

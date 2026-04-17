@@ -34,13 +34,14 @@ Optional env vars:
 import asyncio
 import os
 
+from pydantic import BaseModel
+
 from agentbus import MessageBus, Node, Topic
 from agentbus.harness import Harness, Session
 from agentbus.harness.providers import SystemPrompt
 from agentbus.harness.providers.anthropic import AnthropicProvider
 from agentbus.message import Message
 from agentbus.schemas.harness import ToolCall, ToolResult
-from pydantic import BaseModel
 
 MODEL = os.environ.get("MODEL", "claude-haiku-4-5-20251001")
 ROUNDS = int(os.environ.get("ROUNDS", "2"))
@@ -53,6 +54,7 @@ TOPIC = os.environ.get(
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class WritingTask(BaseModel):
     topic: str
@@ -80,6 +82,7 @@ class FinalPiece(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _no_tools(call: ToolCall) -> ToolResult:
     return ToolResult(tool_call_id=call.id, error="no tools available")
 
@@ -94,6 +97,7 @@ def _make_provider(system: str) -> AnthropicProvider:
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
+
 
 class WriterNode(Node):
     """Writes a first draft, then revises based on critic feedback."""
@@ -216,6 +220,7 @@ class OutputNode(Node):
 # Output helpers
 # ---------------------------------------------------------------------------
 
+
 def _section(agent: str, label: str) -> None:
     print(f"\n[{agent}] {label}")
     print("-" * 50)
@@ -229,6 +234,7 @@ def _print_content(agent: str, text: str) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     print(f"Model: {MODEL}  |  Rounds: {ROUNDS}  |  Topic: {TOPIC}\n")

@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class LifecycleEvent(BaseModel):
@@ -47,12 +47,12 @@ class TelemetryEvent(BaseModel):
     """Published to /system/telemetry by the harness for operational observability."""
 
     event: Literal[
-        "stall_detected",    # user re-prompted without new info
+        "stall_detected",  # user re-prompted without new info
         "context_pressure",  # >80% context window used
-        "tool_timeout",      # tool exceeded timeout
-        "model_demotion",    # fallback provider chain activated
-        "compact_triggered", # any compaction tier fired
-        "breaker_tripped",   # any circuit breaker opened
+        "tool_timeout",  # tool exceeded timeout
+        "model_demotion",  # fallback provider chain activated
+        "compact_triggered",  # any compaction tier fired
+        "breaker_tripped",  # any circuit breaker opened
     ]
     detail: str
     session_id: str

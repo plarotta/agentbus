@@ -1,4 +1,5 @@
 """Phase 3a tests for MessageBus."""
+
 import asyncio
 
 import pytest
@@ -13,11 +14,10 @@ from agentbus.errors import (
     UndeclaredSubscriptionError,
 )
 from agentbus.message import Message
-from agentbus.node import BusHandle, Node, NodeHandle, NodeState
+from agentbus.node import BusHandle, Node, NodeState
 from agentbus.schemas.common import InboundChat, OutboundChat, ToolRequest
 from agentbus.schemas.system import BackpressureEvent, Heartbeat, LifecycleEvent
 from agentbus.topic import Topic
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -713,6 +713,7 @@ async def test_validation_orphan_topic_does_not_prevent_spin(caplog):
     bus.register_topic(Topic[InboundChat]("/orphan"))
 
     import logging
+
     with caplog.at_level(logging.WARNING, logger="agentbus.bus"):
         result = await bus.spin(timeout=0.05)
 

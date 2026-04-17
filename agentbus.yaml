@@ -1,0 +1,7 @@
+memory: false
+model: /nodes
+provider: anthropic
+tools:
+- bash
+- file_read
+- file_write

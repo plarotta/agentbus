@@ -1,4 +1,5 @@
 """Phase 3b tests: introspection APIs and Unix socket server."""
+
 import asyncio
 import json
 import os
@@ -10,7 +11,6 @@ from agentbus.errors import RequestTimeoutError
 from agentbus.node import Node, NodeState
 from agentbus.schemas.common import InboundChat, OutboundChat
 from agentbus.topic import Topic
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

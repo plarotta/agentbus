@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
@@ -32,10 +34,9 @@ def test_timestamp_auto_generated():
 
 
 def test_timestamp_is_utc():
-    from datetime import timezone
     msg = _make_msg()
     assert msg.timestamp.tzinfo is not None
-    assert msg.timestamp.tzinfo == timezone.utc
+    assert msg.timestamp.tzinfo == UTC
 
 
 def test_message_frozen():

@@ -16,17 +16,24 @@ ollama = ["httpx"]
 anthropic = ["anthropic"]
 openai = ["openai"]
 cli = ["typer", "pyyaml"]
+tui = ["textual>=0.47.0", "pyyaml"]
 all = [
     "httpx",
     "anthropic",
     "openai",
     "typer",
     "pyyaml",
+    "textual>=0.47.0",
 ]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "mkdocs-material>=9.0",
+    "textual-dev>=0.47.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11",
+    "pre-commit>=3.7",
+    "detect-secrets>=1.5",
 ]
 
 [project.scripts]
@@ -35,3 +42,96 @@ agentbus = "agentbus.cli:app"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["site", "docs"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "UP",      # pyupgrade
+    "B",       # flake8-bugbear
+    "SIM",     # flake8-simplify
+    "RUF",     # ruff-specific
+]
+ignore = [
+    "E501",   # line length handled by formatter
+    "B008",   # do not perform function calls in argument defaults (pydantic)
+    "SIM108", # ternary preference is noisy
+    # Node subclasses declare `subscriptions`/`publications` as bare class-level
+    # list literals; the Node base class already annotates them as ClassVar. Forcing
+    # every user subclass to restate ClassVar would be ergonomically hostile for a
+    # framework and would conflict with the pattern shown throughout the PRD.
+    "RUF012",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B", "SIM", "RUF"]
+"examples/**" = ["B", "SIM", "RUF"]
+# Pydantic v2 still requires the classic Generic[T] pattern (see CLAUDE.md).
+"agentbus/message.py" = ["UP046"]
+# Topic uses a custom `__class_getitem__` to capture the schema type at subscript
+# time; PEP 695 `class Topic[T]:` syntax would bypass that hook.
+"agentbus/topic.py" = ["UP046"]
+# TUI/CLI strings use typographic glyphs (❯, ↳) by design.
+"agentbus/chat/_config.py" = ["RUF001"]
+"agentbus/chat/_runner.py" = ["RUF001"]
+"agentbus/chat/_tui.py" = ["RUF001"]
+"agentbus/schemas/harness.py" = ["RUF003"]
+# Node lifecycle hooks are *optional* overrides by design, not abstract methods.
+"agentbus/node.py" = ["B027"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["agentbus"]
+strict = false  # full strict introduces churn across internals; we enable strict only on the public API surface below
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false  # relaxed for internals
+# The chat mode and CLI surfaces have a lot of `self._bus = None` / Optional-by-design
+# patterns that would need a significant refactor to satisfy strict typing. They are
+# tracked as a Tier 2 cleanup; skipped here so CI stays green.
+exclude = [
+    "agentbus/chat/",
+    "agentbus/cli\\.py$",
+    "agentbus/launch\\.py$",
+    "agentbus/harness/",
+]
+
+[[tool.mypy.overrides]]
+# Public API surface — hold the line here.
+module = [
+    "agentbus",
+    "agentbus.bus",
+    "agentbus.node",
+    "agentbus.topic",
+    "agentbus.message",
+    "agentbus.introspection",
+    "agentbus.errors",
+    "agentbus.gateway",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+# Third-party libs without stubs.
+module = [
+    "anthropic.*",
+    "openai.*",
+    "httpx.*",
+    "textual.*",
+    "yaml",
+]
+ignore_missing_imports = true

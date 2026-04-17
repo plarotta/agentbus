@@ -27,9 +27,7 @@ class BusHandle(Protocol):
     structurally — no explicit registration needed.
     """
 
-    async def publish(
-        self, topic: str, payload: Any, correlation_id: str | None = None
-    ) -> None:
+    async def publish(self, topic: str, payload: Any, correlation_id: str | None = None) -> None:
         """Publish a payload to a declared topic."""
         ...
 
@@ -113,6 +111,4 @@ class NodeHandle:
         self.messages_received: int = 0
         self.messages_published: int = 0
         self.errors: int = 0
-        self.error_breaker = CircuitBreaker(
-            name=f"node:{node.name}", max_failures=max_errors
-        )
+        self.error_breaker = CircuitBreaker(name=f"node:{node.name}", max_failures=max_errors)

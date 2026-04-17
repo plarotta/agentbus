@@ -1,13 +1,11 @@
-import asyncio
-
 import pytest
 
 from agentbus.message import Message
 from agentbus.node import BusHandle, Node, NodeHandle, NodeState
 from agentbus.schemas.common import InboundChat
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 class MinimalNode(Node):
     name = "minimal"
@@ -28,6 +26,7 @@ class SerialNode(Node):
 
 
 # ── subclass declaration ──────────────────────────────────────────────────────
+
 
 def test_minimal_node_has_required_name():
     assert MinimalNode.name == "minimal"
@@ -73,13 +72,15 @@ def test_subclass_defaults_are_independent():
 
 # ── no-op lifecycle hooks ─────────────────────────────────────────────────────
 
+
 async def test_on_init_noop():
     node = MinimalNode()
 
     class _FakeBus:
         async def publish(self, topic, payload, correlation_id=None): ...
         async def request(self, topic, payload, reply_on, *, timeout=30.0): ...
-        async def topic_history(self, topic, n=10): return []
+        async def topic_history(self, topic, n=10):
+            return []
 
     await node.on_init(_FakeBus())  # must not raise
 
@@ -101,11 +102,13 @@ async def test_on_shutdown_noop():
 
 # ── BusHandle protocol ────────────────────────────────────────────────────────
 
+
 def test_fake_bus_satisfies_protocol():
     class FakeBus:
         async def publish(self, topic, payload, correlation_id=None): ...
         async def request(self, topic, payload, reply_on, *, timeout=30.0): ...
-        async def topic_history(self, topic, n=10): return []
+        async def topic_history(self, topic, n=10):
+            return []
 
     assert isinstance(FakeBus(), BusHandle)
 
@@ -113,12 +116,14 @@ def test_fake_bus_satisfies_protocol():
 def test_incomplete_bus_does_not_satisfy_protocol():
     class IncompleteBus:
         async def publish(self, topic, payload): ...
+
         # missing request and topic_history
 
     assert not isinstance(IncompleteBus(), BusHandle)
 
 
 # ── NodeHandle: queue ─────────────────────────────────────────────────────────
+
 
 def test_node_handle_initial_state():
     handle = NodeHandle(MinimalNode())
@@ -141,6 +146,7 @@ def test_node_handle_queue_is_empty_on_creation():
 
 
 # ── NodeHandle: semaphore (concurrency_mode) ──────────────────────────────────
+
 
 def test_parallel_mode_uses_node_concurrency():
     handle = NodeHandle(FullNode())
@@ -174,6 +180,7 @@ def test_zero_concurrency_clamped_to_1():
 
 
 # ── NodeState ─────────────────────────────────────────────────────────────────
+
 
 def test_node_state_values():
     assert NodeState.CREATED.value == "CREATED"

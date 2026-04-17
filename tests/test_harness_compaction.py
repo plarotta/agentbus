@@ -1,4 +1,4 @@
-from agentbus.harness.compaction import AutoCompact, MAX_CONSECUTIVE_COMPACT_FAILURES, MicroCompact
+from agentbus.harness.compaction import MAX_CONSECUTIVE_COMPACT_FAILURES, AutoCompact, MicroCompact
 from agentbus.schemas.harness import ConversationTurn
 
 

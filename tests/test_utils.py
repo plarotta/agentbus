@@ -11,7 +11,7 @@ def test_opens_at_max_failures():
     breaker = CircuitBreaker(name="test", max_failures=3)
     assert not breaker.record_failure()  # 1st failure — still closed
     assert not breaker.record_failure()  # 2nd failure — still closed
-    opened = breaker.record_failure()    # 3rd failure — now open
+    opened = breaker.record_failure()  # 3rd failure — now open
     assert opened
     assert breaker.is_open
 
@@ -45,7 +45,7 @@ def test_success_allows_reopening():
     breaker.record_failure()
     breaker.record_success()
     assert not breaker.record_failure()  # back to 1
-    assert breaker.record_failure()      # hits max again
+    assert breaker.record_failure()  # hits max again
 
 
 def test_stays_open_after_more_failures():
