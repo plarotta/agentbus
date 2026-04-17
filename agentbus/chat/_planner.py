@@ -98,6 +98,7 @@ class ChatPlannerNode(Node):
         session: Session | None = None,
         *,
         provider=None,
+        extra_tools: list[ToolSchema] | None = None,
     ) -> None:
         self._config = config
         self._session = session or Session()
@@ -105,6 +106,7 @@ class ChatPlannerNode(Node):
         self._harness: Harness | None = None
         self._iteration = 0
         self._injected_provider = provider  # for tests — bypasses _make_provider()
+        self._extra_tools = list(extra_tools) if extra_tools else []
 
     @property
     def session(self) -> Session:
@@ -118,6 +120,7 @@ class ChatPlannerNode(Node):
             else _make_provider(self._config)
         )
         tools: list[ToolSchema] = [TOOL_SCHEMAS[t] for t in self._config.tools if t in TOOL_SCHEMAS]
+        tools.extend(self._extra_tools)
 
         async def tool_executor(call: ToolCall) -> HarnessToolResult:
             await self._status("tool_dispatched", tool_name=call.name)

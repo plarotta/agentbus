@@ -375,9 +375,7 @@ class TestSlashCommands:
             InboundChat(channel="cli", sender="u", text="x"),
             correlation_id=cid,
         )
-        result = await handle_command(
-            "/trace deadbeef", bus=bus, planner=planner, config=cfg
-        )
+        result = await handle_command("/trace deadbeef", bus=bus, planner=planner, config=cfg)
         assert result.output is not None
         assert "deadbeef" in result.output
 
@@ -389,9 +387,7 @@ class TestSlashCommands:
             OutboundChat(text="hi", reply_to="u"),
             correlation_id=cid,
         )
-        result = await handle_command(
-            "/trace /outbound", bus=bus, planner=planner, config=cfg
-        )
+        result = await handle_command("/trace /outbound", bus=bus, planner=planner, config=cfg)
         assert result.output is not None
         assert cid[:8] in result.output
 
@@ -403,9 +399,7 @@ class TestSlashCommands:
             InboundChat(channel="cli", sender="u", text="x"),
             correlation_id="cid-x",
         )
-        result = await handle_command(
-            "/trace /outbound", bus=bus, planner=planner, config=cfg
-        )
+        result = await handle_command("/trace /outbound", bus=bus, planner=planner, config=cfg)
         assert result.output is not None
         assert "No correlated messages" in result.output
 

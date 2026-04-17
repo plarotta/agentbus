@@ -257,10 +257,7 @@ async def _cmd_usage(planner: ChatPlannerNode, config: Any) -> str:
         f"Total tokens: {total}",
     ]
 
-    rows = [
-        [role, str(by_role_count[role]), str(by_role[role])]
-        for role in sorted(by_role.keys())
-    ]
+    rows = [[role, str(by_role_count[role]), str(by_role[role])] for role in sorted(by_role.keys())]
     table = _fmt_table(["role", "turns", "tokens"], rows)
     return "\n".join(header) + "\n\n" + table
 

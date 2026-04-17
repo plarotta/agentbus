@@ -92,9 +92,7 @@ def test_file_path_allowlist_blocks_escape(tmp_path):
         tools={"file_write": ToolPermission(mode="allow", allow_paths=[str(allowed)])}
     )
     # Inside allowlist: ok.
-    assert policy.check(
-        "file_write", {"path": str(allowed / "out.txt")}
-    ).decision == "allow"
+    assert policy.check("file_write", {"path": str(allowed / "out.txt")}).decision == "allow"
     # Traversal attempt: resolved absolute path is outside the allowlist → deny.
     traversal = f"{allowed}/../escape.txt"
     assert policy.check("file_write", {"path": traversal}).decision == "deny"
@@ -193,12 +191,8 @@ async def _dispatch(
 
 
 async def test_tool_node_denies_blocked_command():
-    policy = PermissionPolicy(
-        tools={"bash": ToolPermission(mode="allow", deny_commands=["rm"])}
-    )
-    bus, tool_node, result_q = _make_bus_with_tool_node(
-        enabled_tools=["bash"], policy=policy
-    )
+    policy = PermissionPolicy(tools={"bash": ToolPermission(mode="allow", deny_commands=["rm"])})
+    bus, tool_node, result_q = _make_bus_with_tool_node(enabled_tools=["bash"], policy=policy)
     result = await _dispatch(bus, tool_node, result_q, "bash", {"command": "rm -rf /tmp/x"})
     assert result.output is None
     assert result.error is not None

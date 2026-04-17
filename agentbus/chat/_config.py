@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from agentbus.chat._permissions import PermissionPolicy, load_policy_from_dict
+from agentbus.mcp import MCPServerConfig, load_servers_from_dict
+from agentbus.memory import load_memory_config_from_dict
 
 DEFAULT_CONFIG_PATH = Path("agentbus.yaml")
 DEFAULT_SESSIONS_ROOT = Path.home() / ".agentbus" / "sessions"
@@ -24,7 +27,9 @@ class ChatConfig:
     model: str = "llama3.1:8b-instruct"
     tools: list[str] = field(default_factory=lambda: ["bash", "file_read", "file_write"])
     memory: bool = False
+    memory_settings: dict[str, Any] = field(default_factory=lambda: {"enabled": False})
     permissions: PermissionPolicy = field(default_factory=PermissionPolicy)
+    mcp_servers: list[MCPServerConfig] = field(default_factory=list)
 
     def save(self, path: Path = DEFAULT_CONFIG_PATH) -> None:
         import yaml
@@ -45,14 +50,17 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> ChatConfig:
     text = path.read_text(encoding="utf-8")
     data = yaml.safe_load(text) or {}
 
+    memory_settings = load_memory_config_from_dict(data.get("memory"))
     return ChatConfig(
         provider=data.get("provider", "ollama"),
         model=data.get(
             "model", _PROVIDER_DEFAULTS.get(data.get("provider", "ollama"), "llama3.1:8b-instruct")
         ),
         tools=data.get("tools", ["bash", "file_read", "file_write"]),
-        memory=data.get("memory", False),
+        memory=bool(memory_settings.get("enabled", False)),
+        memory_settings=memory_settings,
         permissions=load_policy_from_dict(data.get("permissions")),
+        mcp_servers=load_servers_from_dict(data.get("mcp_servers")),
     )
 
 

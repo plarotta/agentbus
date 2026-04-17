@@ -263,6 +263,7 @@ def _run_chat(args) -> int:
         config.model = args.model
     if args.no_memory:
         config.memory = False
+        config.memory_settings = {"enabled": False}
 
     # verbose precedence: --quiet > --verbose > auto
     verbose: bool | None = None

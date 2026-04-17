@@ -211,7 +211,12 @@ class ChatToolNode(Node):
         output: str | None = None
         error: str | None = None
 
+        # Silently drop tools this node doesn't recognize as builtins — another
+        # subscriber (e.g. MCPGatewayNode) may own them. Only report "not enabled"
+        # when the tool IS a builtin but the user turned it off.
         if tool not in self._enabled:
+            if tool not in TOOL_HANDLERS:
+                return
             error = f"Tool '{tool}' is not enabled in this session"
         elif tool not in TOOL_HANDLERS:
             error = f"Unknown tool: {tool}"
@@ -234,18 +239,14 @@ class ChatToolNode(Node):
             correlation_id=msg.correlation_id,
         )
 
-    async def _run(
-        self, tool: str, params: dict[str, Any]
-    ) -> tuple[str | None, str | None]:
+    async def _run(self, tool: str, params: dict[str, Any]) -> tuple[str | None, str | None]:
         try:
             result = await TOOL_HANDLERS[tool](params)
             return result, None
         except Exception as exc:
             return None, str(exc)
 
-    async def _request_approval(
-        self, tool: str, params: dict[str, Any], reason: str
-    ) -> bool:
+    async def _request_approval(self, tool: str, params: dict[str, Any], reason: str) -> bool:
         """Ask the injected callback if a gated call should proceed. Fail closed."""
         if self._approval_callback is None:
             return False

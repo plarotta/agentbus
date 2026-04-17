@@ -16,8 +16,9 @@ A ROS-inspired typed pub/sub message bus for LLM agent orchestration. Local-firs
 uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
 uv sync --extra tui          # install textual for the chat TUI
+uv sync --extra mcp          # install the MCP SDK for mcp_servers: in agentbus.yaml
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests (293 passing)
+uv run pytest tests/ -v      # run all tests (344 passing)
 uv run pytest tests/test_chat.py -v      # single test file
 uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
@@ -50,6 +51,10 @@ agentbus/
 ├── cli.py                   # agentbus CLI — chat, topic, node, graph, launch
 ├── launch.py                # YAML launcher
 ├── gateway.py               # GatewayNode base, v2 prep
+├── mcp.py                   # MCP gateway — bridges MCP stdio servers to /tools/request
+├── daemon.py                # agentbus daemon (pidfile, systemd/launchd templates)
+├── logging_config.py        # setup_logging(), JSONFormatter, correlation IDs
+├── doctor.py                # agentbus doctor diagnostic
 ├── harness/                 # LLM harness — zero imports from agentbus.bus/topic/node
 │   ├── loop.py              # Harness main loop
 │   ├── session.py           # Session persistence (~/.agentbus/sessions/<id>/main.json)
@@ -175,6 +180,18 @@ Phase 1–2 tests run without a `MessageBus` instance. `Topic` fan-out tests pas
 
 ### Daemon mode
 `agentbus/daemon.py` runs `launch_sync()` in the foreground after taking an `fcntl.flock` advisory lock on the pidfile (default `~/.agentbus/agentbus.pid`). Second-instance launches fail with exit code 2. `daemon stop` reads the pidfile, sends SIGTERM, and polls `is_process_alive(pid)` until the process exits — important caveat: `os.kill(pid, 0)` returns True on **zombie** children, so tests that spawn daemons in-process must reap them (via `Popen.wait`) concurrently for `stop()` to observe the exit. In real usage the service manager is PID 1, so zombies are reaped automatically. `emit_systemd_unit` / `emit_launchd_plist` render `Type=simple` / foreground `ProgramArguments` templates that bake in the absolute path returned by `shutil.which("agentbus")` (fallback: `python -m agentbus`).
+
+### MCP gateway
+`agentbus/mcp.py` wraps the official `mcp` Python SDK (optional extra — `uv sync --extra mcp`). Configured MCP servers in `agentbus.yaml` are each spawned as a stdio subprocess; the advertised tool list is discovered once at startup and registered with the planner under `mcp__<server>__<tool>` names. The gateway subscribes to `/tools/request` alongside `ChatToolNode` and silently drops anything it doesn't own — `ChatToolNode` reciprocates by silently dropping non-builtin names, so the two coexist cleanly. `CallToolResult.isError` becomes the bus `error` field; text content blocks are concatenated, image blocks become `[image]`, everything else falls back to `str()`. **Lifecycle ownership is split** by necessity: `open_mcp_runtime()` enters the `stdio_client` / `ClientSession` async context managers in the caller's task; `MCPRuntime.aclose()` must be awaited from the same task at shutdown, because the SDK's underlying anyio cancel scopes cannot cross task boundaries. The chat runner calls `open_mcp_runtime()` at the top of `_run_inner` and `await runtime.aclose()` in the surrounding `finally` — `MCPGatewayNode.on_shutdown` does **not** close the runtime. If MCP setup fails at startup, the runner logs a warning and continues without MCP tools (does not abort the session).
+
+### Memory node
+`agentbus/memory.py` ships a `MemoryNode` that consolidates chat history into a searchable local store. Enabled via `memory: { enabled: true, ... }` in `agentbus.yaml`. Architecture:
+- **Storage**: SQLite at `~/.agentbus/memory.db` by default. One row per turn: `(id, session_id, ts, user_text, assistant_text, embedding BLOB)`. Embeddings are packed with `struct.pack("{n}f", ...)` for compact float32. Search loads all rows and ranks with a pure-Python `_cosine()` — no numpy. Called **synchronously** from `on_message`, not via `run_in_executor`, because sqlite connections are thread-affine and the executor thread pool violates that. Fine at conversation-turn scale; revisit only if the store grows past ~100k rows.
+- **EmbeddingProvider** is a `Protocol` with `dim` and `async embed(texts)`. Default impl is `OllamaEmbeddings` (POSTs to `/api/embed`, requires the `ollama` extra for httpx). Adding a new provider means implementing the protocol and extending `build_embedding_provider()`.
+- **Pairing strategy**: planner publishes `/outbound` with a *new* correlation_id (not the inbound's), so `MemoryNode` can't use correlation to match. Instead it holds `_pending_inbound: dict[channel, InboundChat]` and on each `/outbound` does `.popitem()` to pair. Single-channel chat is the only current use case. If multi-channel support lands, pairing must be reworked (track by channel key, or thread correlation_id through the planner).
+- **Tool bridge**: `MemoryNode` subscribes to `/tools/request` and replies on `/tools/result`, matching the `MCPGatewayNode` / `ChatToolNode` silent-drop pattern — it only handles `memory_search`. The tool schema is exported as `MEMORY_SEARCH_SCHEMA` and registered with the planner when the runtime is active.
+- **Failure modes are fail-closed**: startup embedding probe failure → warning + continue without memory (session still runs). Per-turn embedding failure → log + drop (no partial row). Search embedding failure → returns error in the tool result.
+- **Lifecycle**: `open_memory_runtime()` opens the sqlite connection and probes embeddings with `"hello"` before the bus starts. `MemoryRuntime.close()` is called in the runner's `finally`. Same split-ownership model as MCP.
 
 ## Key Invariants
 

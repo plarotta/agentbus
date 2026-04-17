@@ -61,9 +61,7 @@ def _acquire_pidfile(path: Path) -> int:
         os.close(fd)
         if exc.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
             existing = read_pidfile(path)
-            raise PidfileLockedError(
-                f"pidfile {path} is locked by pid={existing or '?'}"
-            ) from None
+            raise PidfileLockedError(f"pidfile {path} is locked by pid={existing or '?'}") from None
         raise
 
     os.ftruncate(fd, 0)

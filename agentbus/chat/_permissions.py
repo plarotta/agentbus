@@ -70,9 +70,7 @@ class PermissionPolicy:
         if perm.mode == "deny":
             return PermissionCheck("deny", f"tool {tool!r} is denied by policy")
         if perm.mode == "approval_required":
-            return PermissionCheck(
-                "approval_required", f"tool {tool!r} requires user approval"
-            )
+            return PermissionCheck("approval_required", f"tool {tool!r} requires user approval")
         return PermissionCheck("allow")
 
 
@@ -110,9 +108,7 @@ def _evaluate_rules(
                         "deny", f"{tool!r}: path {raw_path!r} is under deny root {deny_root!r}"
                     )
             if perm.allow_paths:
-                allowed = any(
-                    _is_within(target, _resolve(root)) for root in perm.allow_paths
-                )
+                allowed = any(_is_within(target, _resolve(root)) for root in perm.allow_paths)
                 if not allowed:
                     return PermissionCheck(
                         "deny",
@@ -157,8 +153,7 @@ def load_policy_from_dict(data: dict[str, Any] | None) -> PermissionPolicy:
         mode = entry.get("mode", "allow")
         if mode not in _VALID_MODES:
             raise ValueError(
-                f"permissions.{tool_name}.mode: must be one of {sorted(_VALID_MODES)}, "
-                f"got {mode!r}"
+                f"permissions.{tool_name}.mode: must be one of {sorted(_VALID_MODES)}, got {mode!r}"
             )
         tools[tool_name] = ToolPermission(
             mode=mode,

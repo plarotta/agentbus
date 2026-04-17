@@ -6,6 +6,53 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added (Tier 3 — in progress)
+- **Memory node.** New `agentbus.memory` module adds a `MemoryNode` that
+  pairs inbound/outbound chat turns, embeds the combined text with a
+  pluggable `EmbeddingProvider` (default: Ollama `/api/embed` with
+  `nomic-embed-text`), and persists them to a local SQLite database
+  (default `~/.agentbus/memory.db`) with struct-packed float32
+  embeddings. Exposes a `memory_search` tool (registered with the
+  planner automatically when memory is enabled) that embeds the query
+  and ranks turns by pure-Python cosine similarity — no numpy, no
+  vector-store dependency. Configure via `memory:` in `agentbus.yaml`:
+  ```yaml
+  memory:
+    enabled: true
+    provider: ollama
+    model: nomic-embed-text
+    base_url: http://localhost:11434
+    db_path: ~/.agentbus/memory.db
+  ```
+  Lifecycle mirrors MCP: `open_memory_runtime()` probes the embedding
+  provider before the bus starts so a missing Ollama surfaces at boot,
+  not mid-conversation. Embedding failures on a single turn are logged
+  and dropped (the turn is simply not stored). `MemoryNode`,
+  `ChatToolNode`, and `MCPGatewayNode` all subscribe to
+  `/tools/request` and silent-drop tools they don't own.
+- **MCP gateway.** New `agentbus.mcp` module adds `MCPServerConfig`,
+  `MCPRuntime`, and `MCPGatewayNode`. Each MCP server is spawned as a
+  stdio subprocess via the official `mcp` Python SDK (optional extra,
+  `uv sync --extra mcp`); its advertised tools are discovered at
+  startup and registered with the planner under namespaced names
+  (`mcp__<server>__<tool>`) so they can't collide with builtins. The
+  gateway subscribes to `/tools/request`, silently drops anything it
+  doesn't own so `ChatToolNode` and `MCPGatewayNode` compose cleanly,
+  and publishes results on `/tools/result` with `CallToolResult.isError`
+  mapped to the bus-facing `error` field. Configure via `mcp_servers:`
+  in `agentbus.yaml`:
+  ```yaml
+  mcp_servers:
+    - name: filesystem
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+  ```
+  Lifecycle ownership is split: `open_mcp_runtime()` opens subprocesses
+  inside the caller's task (the chat runner), and
+  `await runtime.aclose()` runs in the same task on shutdown — this is
+  required because the SDK uses anyio cancel scopes that must enter and
+  exit in the same task.
+
 ### Added (Tier 2 — in progress)
 - **Structured logging.** New `agentbus.logging_config` module with a
   `JSONFormatter`, a text formatter, and a `setup_logging()` entry point

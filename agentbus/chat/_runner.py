@@ -16,6 +16,14 @@ from agentbus.chat._config import ChatConfig
 from agentbus.chat._planner import ChatPlannerNode
 from agentbus.chat._tools import ChatToolNode
 from agentbus.harness.session import Session
+from agentbus.mcp import MCPGatewayNode, MCPRuntime, open_mcp_runtime
+from agentbus.memory import (
+    MEMORY_SEARCH_SCHEMA,
+    MemoryNode,
+    MemoryRuntime,
+    build_embedding_provider,
+    open_memory_runtime,
+)
 from agentbus.message import Message
 from agentbus.node import Node
 from agentbus.schemas.common import InboundChat, OutboundChat, ToolRequest
@@ -152,6 +160,8 @@ class ChatSession:
         self._bus: MessageBus | None = None
         self._planner: ChatPlannerNode | None = None
         self._session: Session | None = None
+        self._mcp_runtime: MCPRuntime | None = None
+        self._memory_runtime: MemoryRuntime | None = None
         self._response_queue: asyncio.Queue[OutboundChat] = asyncio.Queue()
         self._status_queue: asyncio.Queue[PlannerStatus] = asyncio.Queue()
 
@@ -183,7 +193,13 @@ class ChatSession:
         self._session = session
 
         # Register nodes
-        self._planner = ChatPlannerNode(self._config, session)
+        extra_tools = []
+        if self._mcp_runtime is not None:
+            extra_tools.extend(self._mcp_runtime.tool_schemas())
+        if self._memory_runtime is not None:
+            extra_tools.append(MEMORY_SEARCH_SCHEMA)
+
+        self._planner = ChatPlannerNode(self._config, session, extra_tools=extra_tools)
         bus.register_node(self._planner)
 
         if self._config.tools:
@@ -194,6 +210,12 @@ class ChatSession:
                     approval_callback=self._make_approval_callback(),
                 )
             )
+
+        if self._mcp_runtime is not None:
+            bus.register_node(MCPGatewayNode(self._mcp_runtime))
+
+        if self._memory_runtime is not None:
+            bus.register_node(MemoryNode(self._memory_runtime))
 
         bus.register_node(
             _ChatCaptureNode(
@@ -223,12 +245,9 @@ class ChatSession:
         async def _prompt(tool: str, params: dict, reason: str) -> bool:
             import sys
 
-            summary = ", ".join(
-                f"{k}={_truncate_repr(v)}" for k, v in params.items()
-            )
+            summary = ", ".join(f"{k}={_truncate_repr(v)}" for k, v in params.items())
             sys.stdout.write(
-                f"\n[approval required] {tool}({summary})\n  reason: {reason}\n"
-                f"  approve? [y/N]: "
+                f"\n[approval required] {tool}({summary})\n  reason: {reason}\n  approve? [y/N]: "
             )
             sys.stdout.flush()
             loop = asyncio.get_running_loop()
@@ -410,6 +429,35 @@ class ChatSession:
 
         _make_provider(self._config)  # raises SystemExit immediately if deps missing
 
+        # Open MCP subprocesses in THIS task so the anyio cancel scopes inside
+        # the SDK are entered and exited in the same task (the runtime's
+        # aclose() happens in the finally below, also in this task).
+        if self._config.mcp_servers:
+            try:
+                self._mcp_runtime = await open_mcp_runtime(self._config.mcp_servers)
+            except SystemExit:
+                raise
+            except Exception as exc:
+                print(f"[warn] MCP setup failed: {exc}", file=sys.stderr)
+                self._mcp_runtime = None
+
+        if self._config.memory and self._config.memory_settings.get("enabled"):
+            try:
+                embeddings = build_embedding_provider(self._config.memory_settings)
+                from pathlib import Path as _Path
+
+                self._memory_runtime = await open_memory_runtime(
+                    session_id=(self._session.session_id if self._session else "unknown"),
+                    db_path=_Path(self._config.memory_settings["db_path"]),
+                    embeddings=embeddings,
+                )
+            except Exception as exc:
+                print(
+                    f"[warn] Memory setup failed, continuing without memory: {exc}",
+                    file=sys.stderr,
+                )
+                self._memory_runtime = None
+
         self._bus = self._build_bus()
 
         tool_count = len(self._config.tools)
@@ -456,6 +504,14 @@ class ChatSession:
                 bus_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await asyncio.wait_for(bus_task, timeout=5.0)
+            if self._mcp_runtime is not None:
+                with contextlib.suppress(Exception):
+                    await self._mcp_runtime.aclose()
+                self._mcp_runtime = None
+            if self._memory_runtime is not None:
+                with contextlib.suppress(Exception):
+                    self._memory_runtime.close()
+                self._memory_runtime = None
             if use_tui:
                 _reset_terminal()
             if _is_terminal():
