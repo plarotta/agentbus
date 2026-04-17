@@ -333,6 +333,110 @@ class TestSlashCommands:
         assert result.output is not None
         assert "Forked" in result.output
 
+    async def test_trace_empty_log(self):
+        bus, planner, cfg = self._bus_and_planner()
+        result = await handle_command("/trace", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert "No messages" in result.output
+
+    async def test_trace_no_correlation_ids(self):
+        bus, planner, cfg = self._bus_and_planner()
+        bus.publish("/inbound", InboundChat(channel="cli", sender="u", text="hi"))
+        result = await handle_command("/trace", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert "No correlation IDs" in result.output
+
+    async def test_trace_follows_correlation_id(self):
+        bus, planner, cfg = self._bus_and_planner()
+        cid = "abcd1234-corr"
+        # Publish a pair of correlated messages plus one uncorrelated.
+        bus.publish(
+            "/inbound",
+            InboundChat(channel="cli", sender="u", text="first"),
+            correlation_id=cid,
+        )
+        bus.publish("/outbound", OutboundChat(text="reply", reply_to="u"), correlation_id=cid)
+        bus.publish("/inbound", InboundChat(channel="cli", sender="u", text="noise"))
+
+        result = await handle_command("/trace", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert cid[:8] in result.output
+        assert "2 message(s)" in result.output
+        assert "/inbound" in result.output
+        assert "/outbound" in result.output
+        # Noise message (no correlation_id) must not appear.
+        assert "noise" not in result.output
+
+    async def test_trace_by_cid_prefix(self):
+        bus, planner, cfg = self._bus_and_planner()
+        cid = "deadbeef-corr"
+        bus.publish(
+            "/inbound",
+            InboundChat(channel="cli", sender="u", text="x"),
+            correlation_id=cid,
+        )
+        result = await handle_command(
+            "/trace deadbeef", bus=bus, planner=planner, config=cfg
+        )
+        assert result.output is not None
+        assert "deadbeef" in result.output
+
+    async def test_trace_by_topic(self):
+        bus, planner, cfg = self._bus_and_planner()
+        cid = "feedface-corr"
+        bus.publish(
+            "/outbound",
+            OutboundChat(text="hi", reply_to="u"),
+            correlation_id=cid,
+        )
+        result = await handle_command(
+            "/trace /outbound", bus=bus, planner=planner, config=cfg
+        )
+        assert result.output is not None
+        assert cid[:8] in result.output
+
+    async def test_trace_by_topic_no_match(self):
+        bus, planner, cfg = self._bus_and_planner()
+        # Publish something else so the log isn't empty.
+        bus.publish(
+            "/inbound",
+            InboundChat(channel="cli", sender="u", text="x"),
+            correlation_id="cid-x",
+        )
+        result = await handle_command(
+            "/trace /outbound", bus=bus, planner=planner, config=cfg
+        )
+        assert result.output is not None
+        assert "No correlated messages" in result.output
+
+    async def test_usage_empty(self):
+        bus, planner, cfg = self._bus_and_planner()
+        result = await handle_command("/usage", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert "No turns" in result.output
+
+    async def test_usage_aggregates_by_role(self):
+        from agentbus.schemas.harness import ConversationTurn
+
+        bus, planner, cfg = self._bus_and_planner()
+        planner.session.append(ConversationTurn(role="user", content="a", token_count=5))
+        planner.session.append(ConversationTurn(role="assistant", content="b", token_count=7))
+        planner.session.append(ConversationTurn(role="user", content="c", token_count=3))
+
+        result = await handle_command("/usage", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert "Total tokens: 15" in result.output
+        assert "anthropic" in result.output
+        assert "user" in result.output
+        assert "assistant" in result.output
+
+    async def test_help_lists_new_commands(self):
+        bus, planner, cfg = self._bus_and_planner()
+        result = await handle_command("/help", bus=bus, planner=planner, config=cfg)
+        assert result.output is not None
+        assert "/trace" in result.output
+        assert "/usage" in result.output
+
 
 # ---------------------------------------------------------------------------
 # End-to-end integration test with fake provider

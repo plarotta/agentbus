@@ -55,7 +55,11 @@ def build_bus_from_config(config: dict[str, Any]) -> MessageBus:
 async def launch(config_path: str | Path):
     config = _load_yaml_or_json(Path(config_path))
     bus = build_bus_from_config(config)
-    return await bus.spin()
+    shutdown_cfg = config.get("bus", {}).get("shutdown", {})
+    return await bus.spin(
+        drain_timeout=shutdown_cfg.get("drain_timeout", 5.0),
+        install_signal_handlers=shutdown_cfg.get("install_signal_handlers", True),
+    )
 
 
 def launch_sync(config_path: str | Path):

@@ -120,6 +120,8 @@ module = [
     "agentbus.introspection",
     "agentbus.errors",
     "agentbus.gateway",
+    "agentbus.logging_config",
+    "agentbus.daemon",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

@@ -4,6 +4,7 @@ import dataclasses
 import json
 import logging
 import os
+import signal
 import time
 from collections import deque
 from collections.abc import AsyncIterator, Callable
@@ -25,6 +26,7 @@ from agentbus.introspection import (
     SpinResult,
     TopicInfo,
 )
+from agentbus.logging_config import reset_correlation_id, set_correlation_id
 from agentbus.message import Message
 from agentbus.node import Node, NodeHandle, NodeState
 from agentbus.schemas.system import BackpressureEvent, Heartbeat, LifecycleEvent, TelemetryEvent
@@ -218,6 +220,7 @@ class MessageBus:
 
     async def _dispatch_message(self, handle: NodeHandle, msg: Message) -> None:
         async with handle.semaphore:
+            token = set_correlation_id(msg.correlation_id)
             try:
                 await handle.node.on_message(msg)
                 handle.error_breaker.record_success()
@@ -233,6 +236,7 @@ class MessageBus:
                     handle.state = NodeState.ERROR
             finally:
                 handle.messages_received += 1
+                reset_correlation_id(token)
 
     # ── spin_once ─────────────────────────────────────────────────────────────
 
@@ -290,6 +294,9 @@ class MessageBus:
         until: Callable[[], bool] | None = None,
         max_messages: int | None = None,
         timeout: float | None = None,
+        *,
+        drain_timeout: float = 0.0,
+        install_signal_handlers: bool = False,
     ) -> SpinResult:
         """Run the bus through its four lifecycle phases and return a SpinResult.
 
@@ -298,6 +305,17 @@ class MessageBus:
           - ``max_messages``: stop after this many messages are processed
           - ``timeout``: stop after this many seconds (wall clock)
           - No args: run until cancelled (e.g. KeyboardInterrupt / asyncio.CancelledError)
+
+        Graceful shutdown:
+          - ``drain_timeout``: after shutdown is initiated, wait up to this many
+            seconds for node loops to finish processing queued messages before
+            force-cancelling them. Default 0.0 (cancel immediately — matches
+            pre-2.0 behavior; best for tests and bounded runs).
+          - ``install_signal_handlers``: if True, wire SIGTERM/SIGINT to trigger
+            a graceful stop. A second signal escalates to immediate cancel.
+            Default False so tests and library embedders don't fight the host
+            application for signals. Long-running daemons (`agentbus launch`)
+            set this to True.
         """
         start_ts = time.monotonic()
 
@@ -312,12 +330,16 @@ class MessageBus:
         self._running = True
         stop_event = asyncio.Event()
         processed: list[int] = [0]  # mutable int for asyncio tasks to share
+        signals_received: list[int] = [0]  # 0 = none, 1 = graceful, 2+ = escalate
 
         async def _node_loop(handle: NodeHandle) -> None:
-            while not stop_event.is_set():
+            while True:
                 try:
                     msg = await asyncio.wait_for(handle.queue.get(), timeout=0.05)
                 except TimeoutError:
+                    # Queue idle this poll; exit only if shutdown was requested.
+                    if stop_event.is_set():
+                        return
                     continue
                 except asyncio.CancelledError:
                     return
@@ -352,6 +374,13 @@ class MessageBus:
             else None
         )
 
+        handled_signals = self._install_signal_handlers(
+            enabled=install_signal_handlers,
+            stop_event=stop_event,
+            loop_tasks=loop_tasks,
+            signals_received=signals_received,
+        )
+
         # Wait for a termination condition
         try:
             if timeout is not None:
@@ -365,9 +394,27 @@ class MessageBus:
         self._running = False
         stop_event.set()
 
-        for t in loop_tasks:
-            t.cancel()
-        await asyncio.gather(*loop_tasks, return_exceptions=True)
+        # Drain: give node loops a window to finish queued messages before
+        # cancelling. With drain_timeout=0 (the default), cancel straight away.
+        if drain_timeout > 0 and signals_received[0] < 2:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*loop_tasks, return_exceptions=True),
+                    timeout=drain_timeout,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "drain_timeout (%.1fs) elapsed — force-cancelling %d node loop(s)",
+                    drain_timeout,
+                    sum(1 for t in loop_tasks if not t.done()),
+                )
+                for t in loop_tasks:
+                    t.cancel()
+                await asyncio.gather(*loop_tasks, return_exceptions=True)
+        else:
+            for t in loop_tasks:
+                t.cancel()
+            await asyncio.gather(*loop_tasks, return_exceptions=True)
 
         heartbeat_task.cancel()
         await asyncio.gather(heartbeat_task, return_exceptions=True)
@@ -375,6 +422,8 @@ class MessageBus:
         if socket_task is not None:
             socket_task.cancel()
             await asyncio.gather(socket_task, return_exceptions=True)
+
+        self._remove_signal_handlers(handled_signals)
 
         await self._shutdown_phase()
 
@@ -392,6 +441,65 @@ class MessageBus:
             duration_s=duration,
             per_node=per_node,
         )
+
+    # ── Signal handling ──────────────────────────────────────────────────────
+
+    def _install_signal_handlers(
+        self,
+        *,
+        enabled: bool,
+        stop_event: asyncio.Event,
+        loop_tasks: list[asyncio.Task],
+        signals_received: list[int],
+    ) -> list[int]:
+        """Install SIGTERM/SIGINT handlers. Returns the list actually installed.
+
+        First signal: set stop_event → cooperative drain.
+        Second signal: cancel loop tasks immediately.
+        """
+        if not enabled:
+            return []
+
+        loop = asyncio.get_running_loop()
+        handled: list[int] = []
+
+        def _on_signal(sig: int) -> None:
+            signals_received[0] += 1
+            count = signals_received[0]
+            if count == 1:
+                logger.info("received signal %s — initiating graceful shutdown", sig)
+            else:
+                logger.warning(
+                    "received signal %s again (count=%d) — escalating to immediate cancel",
+                    sig,
+                    count,
+                )
+                for t in loop_tasks:
+                    if not t.done():
+                        t.cancel()
+            stop_event.set()
+
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                loop.add_signal_handler(sig, _on_signal, sig)
+                handled.append(sig)
+            except (NotImplementedError, ValueError, RuntimeError):
+                # NotImplementedError: Windows.
+                # ValueError / RuntimeError: not on the main thread (asyncio
+                # wraps set_wakeup_fd's ValueError into RuntimeError on 3.12+).
+                pass
+        return handled
+
+    def _remove_signal_handlers(self, sigs: list[int]) -> None:
+        if not sigs:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        for sig in sigs:
+            with contextlib.suppress(NotImplementedError, ValueError):
+                loop.remove_signal_handler(sig)
 
     # ── Socket server ─────────────────────────────────────────────────────────
 

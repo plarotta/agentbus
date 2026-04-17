@@ -1,10 +1,39 @@
 import json
+import os
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
 from agentbus.schemas.harness import ConversationTurn
 
 DEFAULT_SESSION_ROOT = Path.home() / ".agentbus" / "sessions"
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text to ``path`` atomically.
+
+    Writes to a sibling temp file, fsyncs, then ``os.replace()``s it into
+    place. Either the new content is fully visible at ``path`` or the old
+    content is — never a truncated / half-written file. Safe under
+    SIGTERM/SIGKILL mid-write.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(path.parent),
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        # Best-effort cleanup of the orphaned temp file.
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 class Session:
@@ -32,13 +61,12 @@ class Session:
         return sum(t.token_count for t in self.turns)
 
     def save(self) -> None:
-        self.file_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "session_id": self.session_id,
             "file": self.file_path.name,
             "turns": [turn.model_dump(mode="json") for turn in self.turns],
         }
-        self.file_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        _atomic_write_text(self.file_path, json.dumps(payload, indent=2))
 
     @classmethod
     def load(

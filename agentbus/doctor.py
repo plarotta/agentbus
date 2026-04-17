@@ -167,15 +167,15 @@ def _check_socket(path: str) -> Check:
 
 def _check_socket_path_length(path: str) -> Check:
     """macOS UNIX sockets are limited to 104 bytes (sun_path)."""
-    if sys.platform != "darwin":
-        return Check("socket path length", "ok", f"{len(path)} bytes (non-macOS)")
-    if len(path) > 103:
+    on_darwin = sys.platform == "darwin"
+    if on_darwin and len(path) > 103:
         return Check(
             "socket path length",
             "fail",
             f"{len(path)} bytes > 103 — macOS AF_UNIX limit",
         )
-    return Check("socket path length", "ok", f"{len(path)} bytes")
+    suffix = "" if on_darwin else " (non-macOS)"
+    return Check("socket path length", "ok", f"{len(path)} bytes{suffix}")
 
 
 # ── entry point ───────────────────────────────────────────────────────────

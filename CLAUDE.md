@@ -17,7 +17,7 @@ uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
 uv sync --extra tui          # install textual for the chat TUI
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests (209 passing)
+uv run pytest tests/ -v      # run all tests (293 passing)
 uv run pytest tests/test_chat.py -v      # single test file
 uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
@@ -113,6 +113,11 @@ Backpressure policy is **per-topic**, not per-subscriber. `Topic(..., backpressu
 ### Error hierarchy
 All custom exceptions inherit from `AgentBusError` (base class in `errors.py`).
 
+### Logging
+- One logger tree rooted at `agentbus`. Submodules use `logging.getLogger(__name__)`. Nodes access `self.logger` → `agentbus.node.<name>` (child of the root).
+- `agentbus.logging_config.setup_logging(level=..., format="text"|"json", stream=...)` is the single entry point. Idempotent — safe to call from tests. Env overrides: `AGENTBUS_LOG_LEVEL`, `AGENTBUS_LOG_FORMAT`, `AGENTBUS_LOG_FILE`. The CLI calls it once in `app()` before dispatching.
+- Correlation IDs flow via a `contextvars.ContextVar`. `MessageBus._dispatch_message` calls `set_correlation_id(msg.correlation_id)` before `on_message` and resets it in `finally`. Any `self.logger.info(...)` inside a handler is automatically tagged — no need to pass IDs through helpers. `request_id` / topic tags / etc. can be added via `logger.info("...", extra={"topic": t})` — the JSONFormatter includes any JSON-serializable extras.
+
 ### Backpressure return pattern
 `topic.put(msg)` returns `list[BackpressureEvent]` rather than publishing them directly. The bus receives the list and publishes each event to `/system/backpressure`. This keeps Topic free of bus imports.
 
@@ -158,6 +163,19 @@ All implemented in `bus.py`, not `introspection.py` (data classes only live ther
 ### Test isolation by phase
 Phase 1–2 tests run without a `MessageBus` instance. `Topic` fan-out tests pass `asyncio.Queue()` directly to `add_subscriber()`. `NodeHandle` tests construct handles directly. Phase 3a/3b tests use a real `MessageBus` with `spin_once()` as the primary testing primitive. Socket server tests pass `socket_path=None` on most buses and only test the socket explicitly in `test_introspection.py`.
 
+### Graceful shutdown contract
+`MessageBus.spin(drain_timeout=0.0, install_signal_handlers=False)` controls lifecycle exit:
+- `drain_timeout` — seconds to let node loops keep pulling queued messages after shutdown is triggered (external timeout, signal, or stop_event). Default 0.0 cancels loops immediately on shutdown — best for tests and bounded runs. Once elapsed, remaining loops are force-cancelled.
+- `install_signal_handlers` — when True, SIGTERM/SIGINT trigger cooperative exit via `stop_event`. A **second** signal escalates to immediate cancel (skips the drain window). Default False because library embedders (and the textual TUI) manage their own signals. `agentbus launch` wires `install_signal_handlers=True, drain_timeout=5.0` by default; `bus.shutdown.drain_timeout` / `bus.shutdown.install_signal_handlers` in `agentbus.yaml` override.
+- `until` and `max_messages` still exit each node loop immediately (developer-controlled bounds); `drain_timeout` is irrelevant to those paths since the loops have already returned by the time shutdown runs.
+- `add_signal_handler` failures (Windows, worker threads) are swallowed — installation is a no-op on those platforms, not a crash.
+
+### Atomic session persistence
+`Session.save()` goes through `_atomic_write_text` in `harness/session.py`: write to a sibling tempfile, `fsync`, then `os.replace`. Either the old or the new full JSON is visible at the session path — never a truncated file. Temp files are cleaned up on exception. Safe under SIGKILL mid-write.
+
+### Daemon mode
+`agentbus/daemon.py` runs `launch_sync()` in the foreground after taking an `fcntl.flock` advisory lock on the pidfile (default `~/.agentbus/agentbus.pid`). Second-instance launches fail with exit code 2. `daemon stop` reads the pidfile, sends SIGTERM, and polls `is_process_alive(pid)` until the process exits — important caveat: `os.kill(pid, 0)` returns True on **zombie** children, so tests that spawn daemons in-process must reap them (via `Popen.wait`) concurrently for `stop()` to observe the exit. In real usage the service manager is PID 1, so zombies are reaped automatically. `emit_systemd_unit` / `emit_launchd_plist` render `Type=simple` / foreground `ProgramArguments` templates that bake in the absolute path returned by `shutil.which("agentbus")` (fallback: `python -m agentbus`).
+
 ## Key Invariants
 
 - `source_node` on a `Message` is always set by the bus, never by the node
@@ -178,6 +196,11 @@ agentbus node list
 agentbus node info planner
 agentbus graph --format mermaid        # json | mermaid | dot
 agentbus launch agentbus.yaml
+agentbus daemon start agentbus.yaml              # pidfile-locked foreground run
+agentbus daemon stop                              # SIGTERM + graceful wait
+agentbus daemon status                            # running/stale/absent
+agentbus daemon install systemd agentbus.yaml   > ~/.config/systemd/user/agentbus.service
+agentbus daemon install launchd agentbus.yaml   > ~/Library/LaunchAgents/com.agentbus.daemon.plist
 ```
 
 `topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process.
@@ -195,5 +218,6 @@ agentbus launch agentbus.yaml
 - **Known-benign log filter**: `_ChatBusFilter` is installed on `agentbus.bus` logger during `ChatSession.run()` to suppress "no publishers" (for `/inbound`, which the runner publishes directly) and "no subscribers" (for `/tools/result`, which uses pending futures). Removed in `finally`.
 - **I/O modes**, selected at `_run_inner`: headless stdin/stdout (always available), verbose headless (prints `↳ tool_name` lines from `/planning/status`), and textual TUI (only when stdout is a TTY AND `textual` is importable AND `--headless` is not set). TUI lives in `chat/_tui.py`; test files mock it out.
 - **Session persistence**: `Session` objects at `~/.agentbus/sessions/<uuid>/main.json`. Resume with `agentbus chat --session <id>`. `_cmd_session_list` reads from `DEFAULT_SESSION_ROOT` in `harness/session.py`.
-- **Slash commands**: parsed by `chat/_commands.py::handle_command`. Returns a `CommandResult` with fields `output`, `quit`, `inspect_toggle` (TUI-only signal), `error`. New commands should return `CommandResult`, never print directly — the runner/TUI owns the output surface.
+- **Slash commands**: parsed by `chat/_commands.py::handle_command`. Returns a `CommandResult` with fields `output`, `quit`, `inspect_toggle` (TUI-only signal), `error`. New commands should return `CommandResult`, never print directly — the runner/TUI owns the output surface. `/trace` walks `bus._message_log` by `correlation_id`; `/usage` aggregates `session.turns[].token_count` by role.
 - **Tool definitions** live in `chat/_tools.py::TOOL_SCHEMAS` (LLM-facing JSON schema) and `TOOL_HANDLERS` (async handlers). Adding a tool requires an entry in both dicts plus listing its name in `ChatConfig.tools`.
+- **Tool permissions** live in `chat/_permissions.py`. `PermissionPolicy.check(tool, params)` returns a `PermissionCheck(decision, reason)` where `decision` is one of `"allow" | "deny" | "approval_required"`. Deny rules short-circuit before approval prompts, so `mode: approval_required` + `deny_commands: ["rm"]` on `bash` is safe. File path rules always `expanduser().resolve()` both the target and the rule root before comparison, so `foo/../../etc/passwd` can't escape an `allow_paths` allowlist. `ChatToolNode` takes `permissions=` and `approval_callback=` kwargs; the callback signature is `(tool: str, params: dict, reason: str) -> Awaitable[bool]` and is called only when a check returns `approval_required`. Any exception from the callback fails closed (treated as denial). The stdin-based prompt in `ChatSession._make_approval_callback` only wires up in `headless` mode with `_is_terminal()` — TUI mode passes `None`, so gated tools are denied until a modal dialog is added.

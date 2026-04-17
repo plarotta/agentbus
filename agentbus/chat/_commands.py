@@ -178,6 +178,93 @@ async def _cmd_provider(config) -> str:
     return "\n".join(lines)
 
 
+async def _cmd_trace(bus: MessageBus, query: str | None = None, limit: int = 20) -> str:
+    """Show the causal chain of messages for a given correlation_id.
+
+    Arguments:
+      - None: resolve to the most recent correlation_id in the message log.
+      - A correlation_id (prefix match >= 4 chars): trace that chain.
+      - A topic name: find the most recent message on that topic with a
+        correlation_id, then trace its chain.
+    """
+    log = list(bus._message_log)
+    if not log:
+        return "No messages in the bus log yet."
+
+    target_cid: str | None = None
+
+    if query is None:
+        for m in reversed(log):
+            if m.correlation_id:
+                target_cid = m.correlation_id
+                break
+        if target_cid is None:
+            return "No correlation IDs in the bus log yet."
+    elif query.startswith("/"):
+        # Topic-style argument: find the most recent correlated message on it.
+        for m in reversed(log):
+            if m.topic == query and m.correlation_id:
+                target_cid = m.correlation_id
+                break
+        if target_cid is None:
+            return f"No correlated messages found on topic {query!r}."
+    else:
+        matches = [m for m in log if m.correlation_id and m.correlation_id.startswith(query)]
+        if not matches:
+            return f"No messages match correlation_id prefix {query!r}."
+        target_cid = matches[-1].correlation_id
+
+    chain = [m for m in log if m.correlation_id == target_cid]
+    if not chain:
+        return f"Correlation ID {target_cid!r} had no retained messages."
+
+    chain = chain[-limit:]
+    header = f"trace {target_cid[:8]}…  ({len(chain)} message(s))"
+    parts = [header, "─" * len(header)]
+    first_ts = chain[0].timestamp
+    for m in chain:
+        delta_ms = int((m.timestamp - first_ts).total_seconds() * 1000)
+        payload_str = json.dumps(m.payload.model_dump(), default=str)
+        if len(payload_str) > 100:
+            payload_str = payload_str[:97] + "..."
+        parts.append(f"+{delta_ms:>5d}ms  {m.source_node:<16} → {m.topic}")
+        parts.append(f"           {payload_str}")
+    return "\n".join(parts)
+
+
+async def _cmd_usage(planner: ChatPlannerNode, config: Any) -> str:
+    """Token usage breakdown for the current session."""
+    session = planner.session
+    turns = session.turns
+    if not turns:
+        return "No turns recorded in this session yet."
+
+    by_role: dict[str, int] = {}
+    by_role_count: dict[str, int] = {}
+    for t in turns:
+        by_role[t.role] = by_role.get(t.role, 0) + t.token_count
+        by_role_count[t.role] = by_role_count.get(t.role, 0) + 1
+
+    total = session.total_tokens()
+    provider = getattr(config, "provider", "?")
+    model = getattr(config, "model", "?")
+
+    header = [
+        f"Provider:    {provider}",
+        f"Model:       {model}",
+        f"Session:     {session.session_id}",
+        f"Total turns: {len(turns)}",
+        f"Total tokens: {total}",
+    ]
+
+    rows = [
+        [role, str(by_role_count[role]), str(by_role[role])]
+        for role in sorted(by_role.keys())
+    ]
+    table = _fmt_table(["role", "turns", "tokens"], rows)
+    return "\n".join(header) + "\n\n" + table
+
+
 async def _cmd_breakers(bus: MessageBus) -> str:
     rows = []
     for name, handle in bus._nodes.items():
@@ -197,12 +284,15 @@ Introspection:
   /graph                    Print mermaid topology diagram.
   /echo <topic> [n]         Print last N messages from a topic (default: 5).
   /history [n]              Print last N messages across all topics (default: 10).
+  /trace [cid|topic] [n]    Show the causal chain for a correlation_id, or the
+                            most recent correlated chain touching a topic.
 
 Session:
   /session                  Show current session ID, turns, token count.
   /session list             List all saved sessions.
   /session fork             Fork the current session at this point.
   /compact                  Force context compaction.
+  /usage                    Token usage breakdown by role.
 
 Control:
   /provider                 Show active provider and model.
@@ -268,6 +358,14 @@ async def handle_command(
     if cmd == "history":
         n = int(args[0]) if args else 10
         return CommandResult(output=await _cmd_history(bus, n))
+
+    if cmd == "trace":
+        query = args[0] if args else None
+        limit = int(args[1]) if len(args) > 1 else 20
+        return CommandResult(output=await _cmd_trace(bus, query, limit))
+
+    if cmd == "usage":
+        return CommandResult(output=await _cmd_usage(planner, config))
 
     # ── inspect (TUI-specific, signalled back to caller) ────────────────────
     if cmd == "inspect":

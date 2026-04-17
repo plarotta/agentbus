@@ -6,6 +6,56 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added (Tier 2 — in progress)
+- **Structured logging.** New `agentbus.logging_config` module with a
+  `JSONFormatter`, a text formatter, and a `setup_logging()` entry point
+  controllable via `--log-level` / `--log-format` CLI flags or
+  `AGENTBUS_LOG_LEVEL` / `AGENTBUS_LOG_FORMAT` / `AGENTBUS_LOG_FILE`
+  environment variables. Correlation IDs flow via a
+  `contextvars.ContextVar` — the bus sets the ID around every
+  `on_message` dispatch, so any `self.logger.info(...)` inside a handler
+  is automatically tagged. Nodes now have a `self.logger` property that
+  returns the child logger `agentbus.node.<name>`.
+- **Graceful shutdown.** `MessageBus.spin()` now accepts `drain_timeout`
+  (seconds to let node loops finish queued messages after shutdown is
+  requested before force-cancel) and `install_signal_handlers` (wire
+  SIGTERM/SIGINT to trigger cooperative exit, with a second signal
+  escalating to immediate cancel). `agentbus launch` opts in by default
+  (`drain_timeout=5.0`, `install_signal_handlers=True`); overridable via
+  `bus.shutdown.*` keys in `agentbus.yaml`. Library embedders and the
+  textual TUI keep the previous behaviour (no signal handlers, immediate
+  cancel) by default.
+- **Atomic session persistence.** `Session.save()` now writes via a
+  sibling temp file + `fsync` + `os.replace`, so a SIGKILL mid-save
+  leaves either the previous full JSON or the new one at the session
+  path — never a truncated file.
+- **`/trace` and `/usage` slash commands.** `/trace [cid|topic] [limit]`
+  walks the bus message log and prints the causal chain for a
+  correlation ID (directly, by prefix match, or by looking up the most
+  recent correlated message on a given topic). `/usage` aggregates
+  session tokens by conversation role (user / assistant / tool_result)
+  alongside the active provider + model.
+- **`agentbus daemon` subcommand.** New `agentbus.daemon` module adds
+  pidfile-locked foreground execution (`daemon start`), `daemon stop`
+  (SIGTERM + graceful wait), `daemon status`, and `daemon install
+  {systemd,launchd}` to render a service-file template for the supplied
+  config. The pidfile uses an `fcntl.flock` advisory lock so a second
+  instance fails fast with exit code 2 rather than racing. Templates
+  hard-code `Type=simple` / foreground `ProgramArguments` so
+  systemd/launchd own lifecycle — combined with the Phase 2A graceful
+  shutdown path, SIGTERM from the service manager triggers a drain +
+  clean exit.
+- **Tool permission policy.** New `permissions:` section in
+  `agentbus.yaml` lets users set a per-tool mode (`allow`, `deny`,
+  `approval_required`) plus optional allowlists/denylists:
+  `deny_commands` / `allow_commands` (prefix match on the leading token
+  of a bash command) and `deny_paths` / `allow_paths` (directory roots,
+  expanded and resolved so `../` traversal cannot escape an allowlist).
+  `approval_required` prompts the user via stdin in headless TTY mode
+  and fails closed otherwise, so gated tools never silently run. The
+  existing default (no `permissions:` section) remains fully
+  backwards-compatible.
+
 ### Added
 - **Tooling.** `ruff` (lint + format), `mypy` (strict on the public API),
   `pre-commit`, and `detect-secrets` are now first-class development

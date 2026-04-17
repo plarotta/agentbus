@@ -3,6 +3,7 @@ from importlib.metadata import version as _pkg_version
 
 from agentbus.bus import MessageBus
 from agentbus.gateway import GatewayNode
+from agentbus.logging_config import node_logger, setup_logging
 from agentbus.message import Message
 from agentbus.node import BusHandle, Node
 from agentbus.nodes.observer import ObserverNode
@@ -22,4 +23,6 @@ __all__ = [
     "ObserverNode",
     "Topic",
     "__version__",
+    "node_logger",
+    "setup_logging",
 ]

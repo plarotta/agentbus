@@ -1,5 +1,6 @@
 import asyncio
 import enum
+import logging
 from abc import ABC
 from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
@@ -69,6 +70,15 @@ class Node(ABC):
     publications: ClassVar[list[str]] = []
     concurrency: ClassVar[int] = 1
     concurrency_mode: ClassVar[Literal["parallel", "serial"]] = "parallel"
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Structured child logger for this node: ``agentbus.node.<name>``.
+
+        Records fired inside ``on_message`` are automatically tagged with the
+        current correlation ID by the bus.
+        """
+        return logging.getLogger(f"agentbus.node.{self.name}")
 
     async def on_init(self, bus: BusHandle) -> None:
         """Called once before the node begins receiving messages."""

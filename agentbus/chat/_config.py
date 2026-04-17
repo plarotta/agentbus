@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from agentbus.chat._permissions import PermissionPolicy, load_policy_from_dict
+
 DEFAULT_CONFIG_PATH = Path("agentbus.yaml")
 DEFAULT_SESSIONS_ROOT = Path.home() / ".agentbus" / "sessions"
 
@@ -22,6 +24,7 @@ class ChatConfig:
     model: str = "llama3.1:8b-instruct"
     tools: list[str] = field(default_factory=lambda: ["bash", "file_read", "file_write"])
     memory: bool = False
+    permissions: PermissionPolicy = field(default_factory=PermissionPolicy)
 
     def save(self, path: Path = DEFAULT_CONFIG_PATH) -> None:
         import yaml
@@ -49,6 +52,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> ChatConfig:
         ),
         tools=data.get("tools", ["bash", "file_read", "file_write"]),
         memory=data.get("memory", False),
+        permissions=load_policy_from_dict(data.get("permissions")),
     )
 
 

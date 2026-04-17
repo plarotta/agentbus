@@ -54,6 +54,13 @@ def _is_terminal() -> bool:
     return sys.stdout.isatty()
 
 
+def _truncate_repr(value, limit: int = 60) -> str:
+    text = repr(value)
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
+
+
 def _terminal_width() -> int:
     try:
         return os.get_terminal_size().columns
@@ -180,7 +187,13 @@ class ChatSession:
         bus.register_node(self._planner)
 
         if self._config.tools:
-            bus.register_node(ChatToolNode(self._config.tools))
+            bus.register_node(
+                ChatToolNode(
+                    self._config.tools,
+                    permissions=self._config.permissions,
+                    approval_callback=self._make_approval_callback(),
+                )
+            )
 
         bus.register_node(
             _ChatCaptureNode(
@@ -190,6 +203,42 @@ class ChatSession:
         )
 
         return bus
+
+    # ── Approval callback ────────────────────────────────────────────────────
+
+    def _make_approval_callback(self):
+        """Return a callback suitable for the active I/O mode.
+
+        Headless + TTY: prompt the user via stdin, fail closed on EOF.
+        Headless + non-TTY (piped input, tests): deny everything — the planner
+            sees a permission-denied result and moves on.
+        TUI: no approval path is wired yet, so gated tools are denied (callback
+            is ``None``). Extending textual to surface a modal prompt is future
+            work; until then, set ``mode: allow`` for any tool you need through
+            the TUI.
+        """
+        if not self._headless or not _is_terminal():
+            return None
+
+        async def _prompt(tool: str, params: dict, reason: str) -> bool:
+            import sys
+
+            summary = ", ".join(
+                f"{k}={_truncate_repr(v)}" for k, v in params.items()
+            )
+            sys.stdout.write(
+                f"\n[approval required] {tool}({summary})\n  reason: {reason}\n"
+                f"  approve? [y/N]: "
+            )
+            sys.stdout.flush()
+            loop = asyncio.get_running_loop()
+            try:
+                answer = await loop.run_in_executor(None, sys.stdin.readline)
+            except (EOFError, KeyboardInterrupt):
+                return False
+            return answer.strip().lower() in ("y", "yes")
+
+        return _prompt
 
     # ── Status rendering ─────────────────────────────────────────────────────
 

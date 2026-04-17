@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from agentbus.launch import launch_sync
+from agentbus.logging_config import setup_logging
 
 DEFAULT_SOCKET_PATH = "/tmp/agentbus.sock"
 
@@ -111,6 +112,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agentbus")
     parser.add_argument("--version", action="version", version=f"agentbus {__version__}")
     parser.add_argument("--socket-path", default=DEFAULT_SOCKET_PATH)
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Log level: DEBUG | INFO | WARNING | ERROR (overrides AGENTBUS_LOG_LEVEL)",
+    )
+    parser.add_argument(
+        "--log-format",
+        default=None,
+        choices=["text", "json"],
+        help="Log format (overrides AGENTBUS_LOG_FORMAT)",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # ── chat ──────────────────────────────────────────────────────────────────
@@ -195,6 +207,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_parser.add_argument("--config", default="agentbus.yaml", help="Path to agentbus.yaml")
 
+    # ── daemon ───────────────────────────────────────────────────────────────
+    daemon_parser = subparsers.add_parser(
+        "daemon",
+        help="Run agentbus as a long-lived foreground daemon",
+    )
+    daemon_sub = daemon_parser.add_subparsers(dest="daemon_command", required=True)
+
+    daemon_start = daemon_sub.add_parser("start", help="Start the daemon (foreground)")
+    daemon_start.add_argument("config_path")
+    daemon_start.add_argument("--pidfile", default=None, help="Override the default pidfile path")
+
+    daemon_stop = daemon_sub.add_parser("stop", help="Send SIGTERM and wait for exit")
+    daemon_stop.add_argument("--pidfile", default=None)
+    daemon_stop.add_argument(
+        "--timeout", type=float, default=10.0, help="Seconds to wait for graceful exit"
+    )
+
+    daemon_status = daemon_sub.add_parser("status", help="Report running state")
+    daemon_status.add_argument("--pidfile", default=None)
+
+    daemon_tpl = daemon_sub.add_parser(
+        "install",
+        help="Print a systemd unit or launchd plist for the supplied config",
+    )
+    daemon_tpl.add_argument("kind", choices=["systemd", "launchd"])
+    daemon_tpl.add_argument("config_path")
+    daemon_tpl.add_argument(
+        "--label", default="com.agentbus.daemon", help="launchd Label (launchd only)"
+    )
+
     return parser
 
 
@@ -247,6 +289,8 @@ def app(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    setup_logging(level=args.log_level, format=args.log_format)
+
     if args.command == "chat":
         return _run_chat(args)
     if args.command == "topic" and args.topic_command == "list":
@@ -271,8 +315,40 @@ def app(argv: list[str] | None = None) -> int:
         from agentbus.doctor import run as _run_doctor
 
         return _run_doctor(config_path=args.config, socket_path=args.socket_path)
+    if args.command == "daemon":
+        return _run_daemon(args)
 
     parser.error("unknown command")
+    return 2
+
+
+def _run_daemon(args) -> int:
+    from agentbus import daemon
+
+    pidfile = Path(args.pidfile) if getattr(args, "pidfile", None) else daemon.DEFAULT_PID_PATH
+
+    if args.daemon_command == "start":
+        return daemon.run(args.config_path, pidfile=pidfile)
+    if args.daemon_command == "stop":
+        ok = daemon.stop(pidfile, timeout=args.timeout)
+        if ok:
+            print(f"daemon stopped (pidfile={pidfile})")
+            return 0
+        st = daemon.status(pidfile)
+        print(st.describe(), file=sys.stderr)
+        return 1
+    if args.daemon_command == "status":
+        st = daemon.status(pidfile)
+        print(st.describe())
+        return 0 if st.running else 1
+    if args.daemon_command == "install":
+        if args.kind == "systemd":
+            print(daemon.emit_systemd_unit(args.config_path))
+        else:
+            print(daemon.emit_launchd_plist(args.config_path, label=args.label))
+        return 0
+
+    print(f"unknown daemon subcommand: {args.daemon_command}", file=sys.stderr)
     return 2
 
 

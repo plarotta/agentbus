@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
+from agentbus.chat._permissions import PermissionPolicy
 from agentbus.harness.providers import ToolSchema
 from agentbus.message import Message
 from agentbus.node import Node
 from agentbus.schemas.common import ToolRequest
 from agentbus.schemas.common import ToolResult as BusToolResult
+
+ApprovalCallback = Callable[[str, dict[str, Any], str], Awaitable[bool]]
 
 # ---------------------------------------------------------------------------
 # Tool schemas (LLM-facing declarations)
@@ -186,8 +190,16 @@ class ChatToolNode(Node):
     subscriptions = ["/tools/request"]
     publications = ["/tools/result"]
 
-    def __init__(self, enabled_tools: list[str]) -> None:
+    def __init__(
+        self,
+        enabled_tools: list[str],
+        *,
+        permissions: PermissionPolicy | None = None,
+        approval_callback: ApprovalCallback | None = None,
+    ) -> None:
         self._enabled = set(enabled_tools)
+        self._permissions = permissions or PermissionPolicy()
+        self._approval_callback = approval_callback
         self._bus = None
 
     async def on_init(self, bus) -> None:
@@ -196,20 +208,48 @@ class ChatToolNode(Node):
     async def on_message(self, msg: Message) -> None:
         request: ToolRequest = msg.payload
         tool = request.tool
+        output: str | None = None
+        error: str | None = None
 
         if tool not in self._enabled:
-            output, error = None, f"Tool '{tool}' is not enabled in this session"
-        elif tool in TOOL_HANDLERS:
-            try:
-                output = await TOOL_HANDLERS[tool](request.params)
-                error = None
-            except Exception as exc:
-                output, error = None, str(exc)
+            error = f"Tool '{tool}' is not enabled in this session"
+        elif tool not in TOOL_HANDLERS:
+            error = f"Unknown tool: {tool}"
         else:
-            output, error = None, f"Unknown tool: {tool}"
+            check = self._permissions.check(tool, request.params)
+            if check.decision == "deny":
+                error = f"Permission denied: {check.reason}"
+            elif check.decision == "approval_required":
+                approved = await self._request_approval(tool, request.params, check.reason)
+                if not approved:
+                    error = f"Permission denied by user: {tool!r}"
+                else:
+                    output, error = await self._run(tool, request.params)
+            else:
+                output, error = await self._run(tool, request.params)
 
         await self._bus.publish(
             "/tools/result",
             BusToolResult(tool_call_id=msg.id, output=output, error=error),
             correlation_id=msg.correlation_id,
         )
+
+    async def _run(
+        self, tool: str, params: dict[str, Any]
+    ) -> tuple[str | None, str | None]:
+        try:
+            result = await TOOL_HANDLERS[tool](params)
+            return result, None
+        except Exception as exc:
+            return None, str(exc)
+
+    async def _request_approval(
+        self, tool: str, params: dict[str, Any], reason: str
+    ) -> bool:
+        """Ask the injected callback if a gated call should proceed. Fail closed."""
+        if self._approval_callback is None:
+            return False
+        try:
+            return bool(await self._approval_callback(tool, params, reason))
+        except Exception:
+            return False
