@@ -45,6 +45,15 @@ bus:
   heartbeat_interval: 30.0          # seconds between /system/heartbeat publishes
   introspection_socket: /tmp/agentbus.sock  # set to null to disable
   global_retention: 0               # default retention for topics that don't specify it
+  shutdown:
+    drain_timeout: 5.0              # seconds to let node loops finish queued
+                                    # messages after shutdown is requested
+                                    # (external timeout / signal / stop_event)
+                                    # before force-cancel
+    install_signal_handlers: true   # wire SIGTERM/SIGINT to cooperative exit;
+                                    # a second signal escalates to immediate
+                                    # cancel. `agentbus launch` defaults to
+                                    # true; library embedders default to false.
 
 # ── Topic registrations ─────────────────────────────────────────
 topics:
@@ -76,6 +85,59 @@ nodes:
   - class: myapp.nodes:ToolExecutorNode
 
   - class: agentbus.nodes.observer:ObserverNode
+
+# ── MCP stdio servers ──────────────────────────────────────────
+# Requires `uv sync --extra mcp`. Tools are discovered at startup and
+# registered with the planner under `mcp__<server>__<tool>` names.
+mcp_servers:
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
+# ── Memory node ────────────────────────────────────────────────
+# Consolidates chat turns into a local SQLite store with embeddings and
+# exposes a `memory_search` tool. Disabled by default.
+memory:
+  enabled: true
+  provider: ollama                  # currently only "ollama"
+  model: nomic-embed-text
+  base_url: http://localhost:11434
+  db_path: ~/.agentbus/memory.db
+
+# ── Multi-channel gateways ─────────────────────────────────────
+# Plugin-per-channel architecture; each block is validated against the
+# plugin's ConfigModel before the bus starts. `enabled: false` skips a
+# channel. Install the extras you need: `uv sync --extra slack`,
+# `uv sync --extra telegram`, or `uv sync --extra channels` for both.
+channels:
+  slack:
+    enabled: true
+    app_token: ${SLACK_APP_TOKEN}   # xapp-… (connections:write scope)
+    bot_token: ${SLACK_BOT_TOKEN}   # xoxb-…
+    allowed_channels: ["C01234"]    # empty list = allow all
+    allowed_senders: ["U01234"]
+  telegram:
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    allowed_chats: [12345]          # int chat IDs
+    long_poll_timeout_s: 25
+
+# ── Tool permission policy ─────────────────────────────────────
+# Per-tool gate applied by ChatToolNode before handler dispatch. Deny
+# rules short-circuit before approval prompts. File-path rules resolve
+# both target and root before comparison so `../` cannot escape allowlists.
+# Omit `permissions:` entirely to keep the pre-existing default (allow all).
+permissions:
+  bash:
+    mode: approval_required          # allow | deny | approval_required
+    deny_commands: ["rm", "curl"]    # prefix match on leading token
+    allow_commands: ["ls", "cat"]    # empty = allow all non-denied
+  file_write:
+    mode: allow
+    deny_paths: ["~/.ssh", "/etc"]
+    allow_paths: ["~/workspace"]
+  file_read:
+    mode: allow
 ```
 
 ---

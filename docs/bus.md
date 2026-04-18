@@ -464,6 +464,7 @@ The bus auto-registers these topics. Nodes must never publish to them directly.
 | `/system/heartbeat` | `Heartbeat` | 1 | Every `heartbeat_interval` seconds |
 | `/system/backpressure` | `BackpressureEvent` | 0 | When a queue drops a message |
 | `/system/telemetry` | `TelemetryEvent` | 50 | Harness operational events |
+| `/system/channels` | `ChannelStatus` | 50 | Multi-channel gateway lifecycle transitions |
 
 **LifecycleEvent:**
 
@@ -486,6 +487,16 @@ class Heartbeat(BaseModel):
     messages_per_second: float   # rolling 60s window
     node_states: dict[str, str]  # {"planner": "RUNNING", ...}
     queue_depths: dict[str, int] # {"planner": 0, "browser": 3}
+```
+
+**ChannelStatus:**
+
+```python
+class ChannelStatus(BaseModel):
+    channel: str          # plugin name: "slack", "telegram", ...
+    state: Literal["starting", "connected", "reconnecting", "error", "stopped"]
+    detail: str | None = None
+    timestamp: datetime
 ```
 
 Subscribe to `/system/*` with `ObserverNode` to get all of these.

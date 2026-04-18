@@ -9,10 +9,10 @@ real-time introspection commands.
 uv sync --extra cli
 ```
 
-**Global flag:**
+**Global flags:**
 
 ```bash
-agentbus [--socket-path PATH] <command>
+agentbus [--socket-path PATH] [--log-level LEVEL] [--log-format FORMAT] <command>
 ```
 
 `--socket-path` defaults to `/tmp/agentbus.sock`. Override if your bus uses a
@@ -22,7 +22,13 @@ custom path:
 agentbus --socket-path /tmp/myapp.sock topic list
 ```
 
-The CLI only works while a bus is running with a matching `socket_path`.
+`--log-level` / `--log-format` configure the structured logger once at CLI
+entry. `AGENTBUS_LOG_LEVEL`, `AGENTBUS_LOG_FORMAT`, and `AGENTBUS_LOG_FILE`
+environment variables work too.
+
+The `topic`, `node`, and `graph` commands require a running bus with a
+matching `socket_path`. `chat`, `launch`, `daemon`, `doctor`, `channels`, and
+`--version` are self-contained.
 
 ---
 
@@ -201,7 +207,96 @@ agentbus launch agentbus.yaml
 ```
 
 This is equivalent to calling `launch_sync("agentbus.yaml")` in Python. The
-process runs until interrupted.
+process runs until interrupted. `launch` installs SIGTERM/SIGINT handlers and
+applies `bus.shutdown.drain_timeout` (default 5s) for cooperative exit.
+
+---
+
+## chat
+
+Interactive LLM chat session with a full bus in-process. Self-contained — no
+running bus required.
+
+```bash
+agentbus chat [--config PATH] [--provider NAME] [--model NAME] \
+              [--session ID] [--no-memory] [--verbose|--quiet] [--headless]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--config PATH` | Path to `agentbus.yaml`. Default: `./agentbus.yaml`. On first run, an interactive wizard writes one. |
+| `--provider NAME` | Override the provider from config. One of `ollama`, `anthropic`, `openai`, `mlx`. |
+| `--model NAME` | Override the model. |
+| `--session ID` | Resume a session from `~/.agentbus/sessions/<id>/main.json`. |
+| `--no-memory` | Disable the memory node for this run (overrides `memory.enabled` in config). |
+| `--verbose` | Print `↳ tool_name` lines from `/planning/status` during the run. |
+| `--quiet` | Suppress non-essential output. |
+| `--headless` | Force stdin/stdout I/O — never launch the textual TUI. |
+
+**Slash commands** (inside the chat session): `/topics`, `/nodes`, `/graph`,
+`/echo <topic>`, `/session [list|new|load <id>]`, `/tools`, `/trace [cid|topic]
+[limit]`, `/usage`, `/help`, `/quit`.
+
+---
+
+## daemon
+
+Long-running foreground launch with a pidfile lock plus service-file
+generation for systemd / launchd.
+
+```bash
+agentbus daemon start agentbus.yaml      # pidfile-locked foreground run
+agentbus daemon stop                      # SIGTERM + graceful wait
+agentbus daemon status                    # running | stale | absent
+agentbus daemon install systemd agentbus.yaml  > ~/.config/systemd/user/agentbus.service
+agentbus daemon install launchd agentbus.yaml  > ~/Library/LaunchAgents/com.agentbus.daemon.plist
+```
+
+The pidfile (default `~/.agentbus/agentbus.pid`) uses an `fcntl.flock`
+advisory lock; a second `start` fails fast with exit code 2 rather than
+racing. Templates render `Type=simple` / foreground `ProgramArguments`
+entries, so the service manager owns lifecycle and SIGTERM triggers the
+graceful drain.
+
+---
+
+## doctor
+
+Diagnostic subcommand. Checks Python version, optional-dep availability,
+`~/.agentbus` writability, `agentbus.yaml` validity, socket reachability, and
+provider credentials. Exits non-zero on any failure so it is CI-friendly.
+
+```bash
+agentbus doctor
+```
+
+---
+
+## channels
+
+Multi-channel gateway plugin management. See [Launch Reference](launch.md)
+for the `channels:` config shape.
+
+```bash
+agentbus channels list                 # registered channel plugins
+agentbus channels setup slack          # interactive setup wizard
+agentbus channels setup telegram
+```
+
+`setup` dispatches to the plugin's `setup_wizard` and writes the resulting
+config back to `channels.<name>` in `agentbus.yaml`.
+
+---
+
+## --version
+
+Print the installed version (from `pyproject.toml` via `importlib.metadata`):
+
+```bash
+agentbus --version
+```
+
+Also exposed as `agentbus.__version__` on the Python API.
 
 ---
 

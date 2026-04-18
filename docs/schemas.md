@@ -124,10 +124,13 @@ Messages arriving from an external channel (gateway, CLI, test harness).
 
 ```python
 class InboundChat(BaseModel):
-    channel: str              # e.g. "slack", "http", "cli"
+    channel: str              # e.g. "slack", "telegram", "http", "cli"
     sender: str               # user identifier
     text: str                 # message content
-    metadata: dict = {}       # arbitrary extra data
+    metadata: dict = {}       # arbitrary extra data; gateway-specific
+                              # threading context lives here
+                              # (slack: slack_channel, thread_ts, ts;
+                              #  telegram: chat_id, message_id)
 ```
 
 ### OutboundChat
@@ -138,8 +141,18 @@ Messages leaving to an external channel.
 class OutboundChat(BaseModel):
     text: str
     reply_to: str | None = None   # sender from the originating InboundChat
-    metadata: dict = {}
+    channel: str | None = None    # channel name used by GatewayNode to
+                                   # filter which gateway sends this
+                                   # message; None is accepted by every
+                                   # gateway (legacy single-channel)
+    metadata: dict = {}            # per-channel threading context —
+                                   # round-tripped from InboundChat.metadata
+                                   # by the planner
 ```
+
+The planner echoes `InboundChat.channel` → `OutboundChat.channel` and copies
+the metadata dict through unchanged, so Slack gateways reply in-thread to
+Slack messages without trying to answer Telegram messages (and vice versa).
 
 ### ToolRequest
 
@@ -175,7 +188,13 @@ Published automatically by the bus. Nodes never publish to system topics
 directly. Import as:
 
 ```python
-from agentbus.schemas.system import LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent
+from agentbus.schemas.system import (
+    LifecycleEvent,
+    Heartbeat,
+    BackpressureEvent,
+    TelemetryEvent,
+    ChannelStatus,
+)
 ```
 
 ### LifecycleEvent
@@ -236,6 +255,28 @@ class TelemetryEvent(BaseModel):
     session_id: str
     timestamp: datetime
 ```
+
+### ChannelStatus
+
+Published to `/system/channels` by multi-channel gateways on lifecycle
+transitions (Slack, Telegram, any custom `ChannelPlugin`).
+
+```python
+class ChannelStatus(BaseModel):
+    channel: str   # plugin name: "slack", "telegram", etc.
+    state: Literal[
+        "starting",
+        "connected",
+        "reconnecting",
+        "error",
+        "stopped",
+    ]
+    detail: str | None = None   # human-readable reason (e.g. "auth failed")
+    timestamp: datetime
+```
+
+Emitted by the base `GatewayNode.publish_channel_status()` helper. Legacy
+gateways with `channel_name = None` do not emit these events.
 
 ---
 

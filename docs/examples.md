@@ -367,6 +367,89 @@ agentbus node list
 
 ---
 
+## swarm — Hub-and-spoke multi-agent orchestration
+
+`examples/swarm/main.py`
+
+A coordinator LLM delegates work to named sub-agents via a
+`dispatch_subagent` tool. Each sub-agent lives on its own
+`/swarm/<name>/inbound` + `/swarm/<name>/outbound` topic pair and runs a
+fresh `Harness` per dispatch — fresh context, no shared state. Sub-agents
+never talk to each other; handoffs go through the coordinator.
+
+**Setup:** `uv sync --extra anthropic`
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... uv run python examples/swarm/main.py
+
+# Optional: override the default research-and-write task
+TASK="describe the harness layer" uv run python examples/swarm/main.py
+```
+
+**Architecture:**
+
+```
+/inbound ──► CoordinatorNode ──► /tools/request ──► SwarmCoordinator
+                   ▲                                       │
+                   │                                       ▼
+                   │                       /swarm/researcher/inbound
+                   │                                       │
+                   │                                       ▼
+                   │                          SwarmAgentNode(researcher)
+                   │                                       │
+                   │                                       ▼
+                   │                       /swarm/researcher/outbound
+                   │                                       │
+                   │           (same for /swarm/writer/…)  │
+                   │                                       │
+                   └────────── /tools/result  ◄────────────┘
+```
+
+**What it demonstrates:**
+- `SubAgentSpec(name, description, system_prompt, tools, model)` as the
+  sub-agent contract
+- `register_swarm(bus, specs, config)` returning the dispatch `ToolSchema`
+  to plug into a coordinator planner via `extra_tools=[...]`
+- Correlation-ID preservation across the `/swarm/<name>/outbound` hop
+  (the coordinator's `bus.request` future unblocks on the echo)
+- Silent-drop composition: `SwarmCoordinatorNode`, `ChatToolNode`, and
+  (if configured) `MCPGatewayNode` all subscribe to `/tools/request` and
+  ignore tools they don't own
+- Per-agent tool whitelisting: `spec.tools=["bash", "file_read"]` filters
+  what the sub-agent LLM is *told* about, not what runs downstream
+
+**Register pattern:**
+
+```python
+from agentbus.swarm import SubAgentSpec, register_swarm
+
+specs = [
+    SubAgentSpec(
+        name="researcher",
+        description="Reads files and runs shell commands to gather info.",
+        system_prompt="You are a meticulous researcher. ...",
+        tools=["bash", "file_read"],
+    ),
+    SubAgentSpec(
+        name="writer",
+        description="Synthesizes prose from provided research.",
+        system_prompt="You are a clear, concise technical writer. ...",
+        tools=[],
+    ),
+]
+dispatch_schema = register_swarm(bus, specs, config)
+
+coordinator = ChatPlannerNode(
+    config,
+    provider=AnthropicProvider(...),
+    extra_tools=[dispatch_schema],
+)
+bus.register_node(coordinator)
+bus.register_node(ChatToolNode(enabled_tools=["bash", "file_read"]))
+```
+
+---
+
 ## Common patterns across examples
 
 ### Stopping cleanly

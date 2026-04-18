@@ -282,6 +282,78 @@ The Harness loop is stateful, so `PlannerNode` should always be `serial`.
 
 ---
 
+## Multi-agent orchestration (swarm)
+
+The `agentbus.swarm` module adds **hub-and-spoke** multi-agent coordination
+on top of the pub/sub primitives. A coordinator LLM exposes a
+`dispatch_subagent` tool whose JSON schema inlines an enum of available
+sub-agent names plus a description of each one, so the model picks a target
+in a single round-trip. Sub-agents never talk to each other — every handoff
+goes through the coordinator. This matches claude-code's `Task` tool model.
+
+Shape of a sub-agent:
+
+```python
+SubAgentSpec(
+    name="researcher",
+    description="Reads files and runs shell commands to gather info.",
+    system_prompt="You are a meticulous researcher. ...",
+    tools=["bash", "file_read"],
+    model=None,  # optional override
+)
+```
+
+`register_swarm(bus, specs, config)` registers a namespaced topic pair per
+spec (`/swarm/<name>/inbound` + `/swarm/<name>/outbound`), instantiates one
+`SwarmAgentNode` per spec, and a single `SwarmCoordinatorNode` that owns
+the dispatch tool. It returns the dispatch `ToolSchema` the caller passes
+to its coordinator planner as `extra_tools=[...]`.
+
+Two invariants keep the pattern composable:
+- **Correlation-ID preservation.** `SwarmAgentNode.on_message` publishes
+  its `OutboundChat` reply with `correlation_id=msg.correlation_id` — that
+  echo is what unblocks the coordinator's `bus.request(...)` future.
+- **Silent drop on `/tools/request`.** `SwarmCoordinatorNode` shares the
+  `/tools/request` topic with `ChatToolNode`, `MCPGatewayNode`, and
+  `MemoryNode`; each node ignores tools it doesn't own. Validation
+  failures (unknown agent, empty task) surface as `ToolResult.error`, so
+  the coordinator LLM sees them as tool failures and can recover.
+
+Each dispatch builds a fresh `Session` + `Harness` — sub-agents are
+stateless across calls. Peer-to-peer messaging, persistent per-agent
+sessions, streaming responses, and nested swarms are deferred on purpose.
+
+---
+
+## Multi-channel gateways
+
+`agentbus.channels` ports a trimmed plugin-per-channel pattern from
+[openclaw](https://github.com/openclaw/openclaw). Two channel subpackages
+ship in-tree — `channels/slack` (Socket Mode via `slack-bolt`) and
+`channels/telegram` (raw `httpx` long-poll) — each is a `ChannelPlugin`
+with its own `ConfigModel`, `setup_wizard`, and `create_gateway`.
+
+Routing is schema-driven:
+- `InboundChat.channel` is stamped by the gateway.
+- The planner echoes `channel` (and metadata) into each `OutboundChat`.
+- `GatewayNode._send_external` filters outbound by the gateway's
+  `channel_name` class attr, so Slack and Telegram gateways coexist on
+  one bus without either one trying to answer the other's messages.
+
+Per-channel threading context round-trips through the `metadata` dict —
+Slack stores `slack_channel`, `thread_ts`, `ts`; Telegram stores
+`chat_id`, `message_id`. Every gateway publishes `ChannelStatus` updates
+on `/system/channels` (`starting | connected | reconnecting | error |
+stopped`), and each listener loop is guarded by a `CircuitBreaker` with
+`MAX_CONSECUTIVE_GATEWAY_FAILURES = 5`. Allowlists (`allowed_channels`,
+`allowed_senders`, `allowed_chats`) filter messages before they reach the
+bus — the mandatory security floor.
+
+Integration is through `launch` / `daemon` (not `chat`): `channels:` in
+`agentbus.yaml` registers surviving gateways as nodes before `spin()`.
+
+---
+
 ## Circuit breakers
 
 Every retry loop is guarded by a `CircuitBreaker`. When consecutive failures
@@ -292,6 +364,9 @@ attempting the operation.
 |----------|-------------|-------------|
 | Per-node error handling | `node:{name}` | 10 |
 | AutoCompact | `autocompact` | 3 |
+| Tool execution | `tool_executor` | 5 |
+| Provider calls | `provider` | 3 |
+| Channel gateway loops | `channel:{name}` | 5 |
 
 When a node's breaker opens, its state transitions to `NodeState.ERROR` and its
 `_node_loop` exits. The node stops receiving messages.
@@ -309,3 +384,9 @@ When a node's breaker opens, its state transitions to `NodeState.ERROR` and its
 - `Session.fork()` never mutates the parent session.
 - `spin_once()` is the primary testing primitive — it works without a running
   `spin()` loop.
+- Swarm sub-agents echo the inbound `correlation_id` on their
+  `/swarm/<name>/outbound` reply — without it, the coordinator's
+  `bus.request` future hangs until timeout.
+- Multi-channel gateways filter outbound traffic by `OutboundChat.channel`
+  against the gateway's `channel_name` class attr; `None` is accepted by
+  every gateway for legacy single-channel compatibility.

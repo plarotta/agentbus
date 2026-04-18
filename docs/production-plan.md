@@ -1,6 +1,6 @@
 # AgentBus — Production Readiness Plan
 
-Status: **Tier 1 in progress.** See `progress.md` for MVP status and `plan.md` for the original implementation spec.
+Status: **Tier 1 complete; Tier 2 complete; Tier 3 in flight — MCP, Memory, Channels, Swarm shipped.** See `progress.md` for MVP status, `plan.md` for the original implementation spec, and `CHANGELOG.md` for the ship log.
 
 This plan turns AgentBus from an MVP into a production-grade system. It is organized in three tiers; each tier is independently shippable. References: [openclaw/openclaw](https://github.com/openclaw/openclaw) (engineering hygiene, daemon support, observability, permissions) and [plarotta/claude-code](https://github.com/plarotta/claude-code) (MCP, multi-agent orchestration, background memory).
 
@@ -34,10 +34,10 @@ Low-risk, high-leverage. No architectural changes. Prereq for Tiers 2 and 3.
 
 ## Tier 3 — Feature parity with references
 
-- **MCP gateway.** A `GatewayNode` subclass that bridges MCP tools to `/tools/request` / `/tools/result`. Enables any MCP server as a tool source.
-- **Multi-agent orchestration.** Example + reusable pattern: a `planner` node spawns sub-agents as additional `ChatPlannerNode` instances on isolated topic namespaces, with a router node coordinating handoffs. Inspired by claude-code's "Swarm".
-- **Background memory consolidation.** A `MemoryNode` that subscribes to `/outbound` and conversation turns, periodically summarizes, writes to a local vector store, and surfaces retrieval via a `memory_search` tool. Inspired by claude-code's "Dream".
-- **Multi-channel gateways.** `SlackGatewayNode`, `TelegramGatewayNode` — both subclass `GatewayNode` and translate external messages ↔ `/inbound` / `/outbound`. Inspired by openclaw's multi-platform support.
+- **MCP gateway. ✅ Shipped.** `agentbus.mcp` spawns configured MCP stdio servers via the official `mcp` Python SDK (`uv sync --extra mcp`), discovers advertised tools, and registers them with the planner under `mcp__<server>__<tool>` names. `MCPGatewayNode` subscribes to `/tools/request` using the silent-drop pattern so it composes with `ChatToolNode`. Lifecycle ownership is split: `open_mcp_runtime()` and `runtime.aclose()` must run in the same task because the SDK's anyio cancel scopes cannot cross task boundaries.
+- **Multi-agent orchestration. ✅ Shipped (hub-and-spoke).** `agentbus.swarm` — `register_swarm(bus, specs, config)` returns a `dispatch_subagent` `ToolSchema` the coordinator planner plugs in via `extra_tools=[...]`. Each `SubAgentSpec` gets namespaced topics `/swarm/<name>/inbound` + `/swarm/<name>/outbound`; `SwarmAgentNode` builds a fresh `Harness` + `Session` per dispatch (stateless across calls, matching claude-code's Task tool). Sub-agents never talk to each other; all handoffs route through the coordinator. Peer-to-peer / persistent sessions / nested swarms deferred on purpose.
+- **Background memory consolidation. ✅ Shipped.** `agentbus.memory` pairs inbound/outbound chat turns, embeds them via a pluggable `EmbeddingProvider` (default: Ollama `nomic-embed-text`), and persists struct-packed float32 vectors to SQLite (`~/.agentbus/memory.db` by default). Exposes a `memory_search` tool with pure-Python cosine ranking — no numpy, no vector-store dependency. Fail-closed lifecycle: startup embedding probe failure → warn and continue without memory; per-turn embedding failure → drop; search failure → `ToolResult.error`.
+- **Multi-channel gateways. ✅ Shipped.** `agentbus.channels` ports a plugin-per-channel architecture from openclaw in trimmed form. Two gateways ship in-tree: `channels/slack` (Socket Mode via `slack-bolt`, `uv sync --extra slack`) and `channels/telegram` (httpx long-poll, `uv sync --extra telegram`). Each implements `ChannelPlugin[ConfigT]` — `name`, `ConfigModel`, `setup_wizard`, `create_gateway`. `OutboundChat.channel` + `metadata` route + thread replies per-gateway; allowlists filter before messages reach `/inbound`; circuit breaker parks a dead token after 5 consecutive failures. `agentbus channels list|setup` + `/system/channels` status topic round out the surface.
 
 ## Non-goals
 
