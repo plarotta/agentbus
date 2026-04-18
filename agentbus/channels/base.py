@@ -26,7 +26,8 @@ can't burn CPU forever.
 """
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel
 
@@ -41,6 +42,22 @@ class ChannelRuntimeError(RuntimeError):
     Kept distinct from generic ``RuntimeError`` so the loader can catch it
     without swallowing bugs.
     """
+
+
+ProbeStatus = Literal["ok", "warn", "fail"]
+
+
+@dataclass
+class ProbeResult:
+    """Outcome of a lightweight per-channel liveness check.
+
+    Populated by :meth:`ChannelPlugin.probe` and rendered by
+    ``agentbus doctor``. Follows the same ``ok/warn/fail`` shape as
+    the other doctor checks so they can be folded into a single report.
+    """
+
+    status: ProbeStatus
+    detail: str = ""
 
 
 class ChannelPlugin[ConfigT: BaseModel](ABC):
@@ -63,6 +80,17 @@ class ChannelPlugin[ConfigT: BaseModel](ABC):
             f"{cls.__name__} does not provide an interactive setup wizard; "
             "edit agentbus.yaml manually"
         )
+
+    @classmethod
+    async def probe(cls, config: ConfigT) -> ProbeResult:
+        """Lightweight liveness check for ``agentbus doctor``.
+
+        Default implementation returns ``warn`` — subclasses override
+        with a cheap auth check (Slack ``auth.test``, Telegram
+        ``getMe``, etc.). The probe must be safe to run from a cold
+        process: no bus, no ``on_init``, no background tasks.
+        """
+        return ProbeResult(status="warn", detail="no probe implemented")
 
     @classmethod
     @abstractmethod

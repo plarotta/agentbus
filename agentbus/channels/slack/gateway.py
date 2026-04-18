@@ -5,11 +5,17 @@ handled by ``slack-bolt``'s ``AsyncSocketModeHandler``. This module just
 wires it into the agentbus bus:
 
 * ``_listen_external`` starts the Socket Mode handler inside a
-  circuit-breaker-guarded reconnect loop and translates ``message`` /
-  ``app_mention`` events into :class:`InboundChat`.
+  :class:`~agentbus.channels.reconnect.ReconnectPolicy`-guarded reconnect
+  loop and translates ``message`` / ``app_mention`` events into
+  :class:`InboundChat`. Non-recoverable auth errors (``token_revoked``,
+  ``invalid_auth``, ...) short-circuit the retry loop.
 * ``_send_external`` maps :class:`OutboundChat` back to
-  ``chat.postMessage``, preserving the ``thread_ts`` carried through
-  ``OutboundChat.metadata``.
+  ``chat.postMessage``, preserving ``thread_ts`` carried through
+  ``OutboundChat.metadata`` and chunking long text at ~8000 chars so
+  nothing silently truncates. Own message ``ts`` values are cached to
+  filter self-echo.
+* Inbound events are deduplicated on ``ts`` to survive Socket Mode
+  redeliveries after reconnect.
 
 ``slack-bolt`` and ``slack-sdk`` are optional deps (``uv sync --extra
 slack``). Importing this module without them installed raises
@@ -21,12 +27,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any, ClassVar
 
 from agentbus.channels.base import (
     MAX_CONSECUTIVE_GATEWAY_FAILURES,
     ChannelRuntimeError,
 )
+from agentbus.channels.chunking import SLACK_TEXT_LIMIT, chunk_text
+from agentbus.channels.dedup import DedupCache
+from agentbus.channels.reconnect import ReconnectPolicy
 from agentbus.gateway import GatewayNode
 from agentbus.message import Message
 from agentbus.node import BusHandle
@@ -37,7 +47,13 @@ from .config import SlackConfig
 
 logger = logging.getLogger(__name__)
 
-_RECONNECT_BACKOFF_SECONDS = 5.0
+SLACK_NON_RECOVERABLE_RE = re.compile(
+    r"account_inactive|invalid_auth|token_revoked|not_authed|account_disabled|missing_scope",
+    re.IGNORECASE,
+)
+"""Errors that mean "stop retrying" — the token/account is done. Matches
+openclaw's list; kept conservative so we don't short-circuit transient
+network errors that happen to mention the same word."""
 
 
 def _require_slack_sdk() -> tuple[Any, Any]:
@@ -65,6 +81,8 @@ class SlackGatewayNode(GatewayNode):
         self._config = config
         self._app: Any = None
         self._handler: Any = None
+        self._inbound_seen: DedupCache = DedupCache(capacity=512)
+        self._own_ts: DedupCache = DedupCache(capacity=256)
         # Lazy import so the SDK isn't needed until a gateway is actually created.
         _require_slack_sdk()
 
@@ -91,11 +109,18 @@ class SlackGatewayNode(GatewayNode):
         text = event.get("text") or ""
         if not text:
             return
+        ts = event.get("ts")
+        if isinstance(ts, str) and ts in self._own_ts:
+            # Our own echo from chat.postMessage — drop silently.
+            return
+        if isinstance(ts, str) and self._inbound_seen.check_and_add(ts):
+            # Redelivered event (lost ack on a reconnect) — already processed.
+            return
         if self._config.allowed_channels and channel_id not in self._config.allowed_channels:
             return
         if self._config.allowed_senders and user not in self._config.allowed_senders:
             return
-        thread_ts = event.get("thread_ts") or event.get("ts")
+        thread_ts = event.get("thread_ts") or ts
         await self.publish_external(
             InboundChat(
                 channel="slack",
@@ -104,32 +129,39 @@ class SlackGatewayNode(GatewayNode):
                 metadata={
                     "slack_channel": channel_id,
                     "thread_ts": thread_ts,
-                    "ts": event.get("ts"),
+                    "ts": ts,
                 },
             )
         )
 
     async def _listen_external(self) -> None:
-        """Run Socket Mode with a circuit-breaker-guarded reconnect loop."""
+        """Run Socket Mode with exponential-backoff reconnect."""
         breaker = CircuitBreaker("slack-gateway", max_failures=MAX_CONSECUTIVE_GATEWAY_FAILURES)
+        policy = ReconnectPolicy()
         while True:
             try:
                 await self.publish_channel_status("connected")
                 await self._handler.start_async()
                 # start_async returns only on clean disconnect; treat as transient.
+                policy.reset()
                 breaker.record_success()
                 await self.publish_channel_status("reconnecting", detail="socket disconnected")
             except asyncio.CancelledError:
                 await self.publish_channel_status("stopped")
                 raise
             except Exception as exc:
+                detail = str(exc)
+                if SLACK_NON_RECOVERABLE_RE.search(detail):
+                    logger.error("Slack gateway: non-recoverable error, stopping: %s", detail)
+                    await self.publish_channel_status("error", detail=f"auth: {detail}")
+                    return
                 logger.warning("Slack socket error: %s", exc)
                 tripped = breaker.record_failure()
                 if tripped:
-                    await self.publish_channel_status("error", detail=str(exc))
+                    await self.publish_channel_status("error", detail=detail)
                     return
-                await self.publish_channel_status("reconnecting", detail=str(exc))
-            await asyncio.sleep(_RECONNECT_BACKOFF_SECONDS)
+                await self.publish_channel_status("reconnecting", detail=detail)
+            await asyncio.sleep(policy.next_delay())
 
     async def _send_external(self, msg: Message) -> None:
         payload = msg.payload
@@ -139,14 +171,20 @@ class SlackGatewayNode(GatewayNode):
         if not slack_channel:
             logger.warning("Slack outbound dropped — missing slack_channel metadata")
             return
-        try:
-            await self._app.client.chat_postMessage(
-                channel=slack_channel,
-                text=payload.text,
-                thread_ts=payload.metadata.get("thread_ts"),
-            )
-        except Exception as exc:
-            logger.warning("Slack chat_postMessage failed: %s", exc)
+        thread_ts = payload.metadata.get("thread_ts")
+        for piece in chunk_text(payload.text, SLACK_TEXT_LIMIT):
+            try:
+                resp = await self._app.client.chat_postMessage(
+                    channel=slack_channel,
+                    text=piece,
+                    thread_ts=thread_ts,
+                )
+            except Exception as exc:
+                logger.warning("Slack chat_postMessage failed: %s", exc)
+                return
+            ts = _extract_ts(resp)
+            if ts:
+                self._own_ts.add(ts)
 
     async def on_shutdown(self) -> None:
         await super().on_shutdown()
@@ -156,3 +194,17 @@ class SlackGatewayNode(GatewayNode):
             except Exception as exc:  # pragma: no cover - cleanup best-effort
                 logger.debug("Slack handler close error: %s", exc)
         await self.publish_channel_status("stopped")
+
+
+def _extract_ts(resp: Any) -> str | None:
+    """Pull ``ts`` out of a ``chat.postMessage`` response — slack-bolt
+    returns an object with a ``.data`` dict; tests may pass a plain
+    dict. Fall through silently on anything unexpected."""
+    if resp is None:
+        return None
+    data = getattr(resp, "data", None)
+    if isinstance(data, dict) and isinstance(data.get("ts"), str):
+        return data["ts"]
+    if isinstance(resp, dict) and isinstance(resp.get("ts"), str):
+        return resp["ts"]
+    return None

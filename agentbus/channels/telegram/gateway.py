@@ -8,10 +8,13 @@ inbound ``message`` update into :class:`InboundChat`, and
 :class:`OutboundChat` back into ``sendMessage``.
 
 Reconnect behaviour: transient HTTP errors, timeouts, and 5xx responses
-fall into a :class:`~agentbus.utils.CircuitBreaker`-guarded reconnect
-loop. After ``MAX_CONSECUTIVE_GATEWAY_FAILURES`` consecutive failures
-the gateway publishes an ``error`` :class:`ChannelStatus` and stops —
-stops retrying to avoid hammering a dead token or a revoked bot.
+fall into an exponential-backoff reconnect loop guarded by
+:class:`~agentbus.utils.CircuitBreaker`. HTTP 401 / ``Unauthorized``
+replies short-circuit the loop immediately — those mean the token is
+revoked and retrying would just hammer a dead API. A
+:class:`~agentbus.channels.watchdog.StallWatchdog` flags the gateway
+as stalled if no poll round completes within the idle window, which
+triggers a listener cancel and a clean reconnect.
 
 ``httpx`` is already the transitive dep for the ``ollama`` embedding
 provider, so no new dependency is strictly required. A ``telegram``
@@ -22,12 +25,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any, ClassVar
 
 from agentbus.channels.base import (
     MAX_CONSECUTIVE_GATEWAY_FAILURES,
     ChannelRuntimeError,
 )
+from agentbus.channels.chunking import TELEGRAM_TEXT_LIMIT, chunk_text
+from agentbus.channels.dedup import DedupCache
+from agentbus.channels.reconnect import ReconnectPolicy
+from agentbus.channels.watchdog import StallWatchdog
 from agentbus.gateway import GatewayNode
 from agentbus.message import Message
 from agentbus.node import BusHandle
@@ -38,7 +46,13 @@ from .config import TelegramConfig
 
 logger = logging.getLogger(__name__)
 
-_RECONNECT_BACKOFF_SECONDS = 5.0
+TELEGRAM_NON_RECOVERABLE_RE = re.compile(
+    r"\b401\b|unauthorized|forbidden|bot was deleted|bot was blocked",
+    re.IGNORECASE,
+)
+"""Errors that mean "stop retrying" — the token is gone or the bot was
+banned. Conservative list; real HTTP 401s and the canonical
+"Unauthorized" string are the usual hits."""
 
 
 def _require_httpx() -> Any:
@@ -66,6 +80,8 @@ class TelegramGatewayNode(GatewayNode):
         self._offset = 0
         self._client = client  # tests inject a fake httpx-shaped client
         self._owns_client = client is None
+        self._inbound_seen: DedupCache = DedupCache(capacity=512)
+        self._watchdog: StallWatchdog | None = None
 
     async def on_init(self, bus: BusHandle) -> None:
         self._bus = bus
@@ -77,16 +93,29 @@ class TelegramGatewayNode(GatewayNode):
             )
         await self.publish_channel_status("starting")
         self._listener_task = asyncio.create_task(self._listen_external())
+        idle_s = float(self._config.long_poll_timeout_s) * 3.0 + 30.0
+        self._watchdog = StallWatchdog(idle_s=idle_s, on_stall=self._on_stall)
+        self._watchdog.start()
 
     def _endpoint_base(self) -> str:
         return f"{self._config.api_base.rstrip('/')}/bot{self._config.bot_token}"
 
+    async def _on_stall(self) -> None:
+        """Watchdog fired — kick the listener so the reconnect loop runs."""
+        logger.warning("Telegram gateway appears stalled; forcing reconnect")
+        if self._listener_task is not None and not self._listener_task.done():
+            self._listener_task.cancel()
+
     async def _listen_external(self) -> None:
         breaker = CircuitBreaker("telegram-gateway", max_failures=MAX_CONSECUTIVE_GATEWAY_FAILURES)
+        policy = ReconnectPolicy()
         await self.publish_channel_status("connected")
         while True:
             try:
                 updates = await self._fetch_updates()
+                if self._watchdog is not None:
+                    self._watchdog.heartbeat()
+                policy.reset()
                 breaker.record_success()
                 for update in updates:
                     await self._dispatch_update(update)
@@ -94,13 +123,18 @@ class TelegramGatewayNode(GatewayNode):
                 await self.publish_channel_status("stopped")
                 raise
             except Exception as exc:
+                detail = str(exc)
+                if TELEGRAM_NON_RECOVERABLE_RE.search(detail):
+                    logger.error("Telegram gateway: non-recoverable error, stopping: %s", detail)
+                    await self.publish_channel_status("error", detail=f"auth: {detail}")
+                    return
                 logger.warning("Telegram long-poll error: %s", exc)
                 tripped = breaker.record_failure()
                 if tripped:
-                    await self.publish_channel_status("error", detail=str(exc))
+                    await self.publish_channel_status("error", detail=detail)
                     return
-                await self.publish_channel_status("reconnecting", detail=str(exc))
-                await asyncio.sleep(_RECONNECT_BACKOFF_SECONDS)
+                await self.publish_channel_status("reconnecting", detail=detail)
+                await asyncio.sleep(policy.next_delay())
 
     async def _fetch_updates(self) -> list[dict]:
         assert self._client is not None
@@ -120,6 +154,9 @@ class TelegramGatewayNode(GatewayNode):
         return list(updates)
 
     async def _dispatch_update(self, update: dict) -> None:
+        update_id = update.get("update_id")
+        if update_id is not None and self._inbound_seen.check_and_add(str(update_id)):
+            return
         message = update.get("message") or update.get("edited_message")
         if not isinstance(message, dict):
             return
@@ -155,17 +192,25 @@ class TelegramGatewayNode(GatewayNode):
         if chat_id is None:
             logger.warning("Telegram outbound dropped — missing chat_id metadata")
             return
-        body: dict[str, Any] = {"chat_id": chat_id, "text": payload.text}
+        pieces = chunk_text(payload.text, TELEGRAM_TEXT_LIMIT)
         reply_to_mid = payload.metadata.get("message_id")
-        if reply_to_mid is not None:
-            body["reply_to_message_id"] = reply_to_mid
-        try:
-            resp = await self._client.post("/sendMessage", json=body)
-            resp.raise_for_status()
-        except Exception as exc:
-            logger.warning("Telegram sendMessage failed: %s", exc)
+        for i, piece in enumerate(pieces):
+            body: dict[str, Any] = {"chat_id": chat_id, "text": piece}
+            # Reply quote only on the first chunk; subsequent chunks are
+            # plain follow-ups in the same chat.
+            if i == 0 and reply_to_mid is not None:
+                body["reply_to_message_id"] = reply_to_mid
+            try:
+                resp = await self._client.post("/sendMessage", json=body)
+                resp.raise_for_status()
+            except Exception as exc:
+                logger.warning("Telegram sendMessage failed: %s", exc)
+                return
 
     async def on_shutdown(self) -> None:
+        if self._watchdog is not None:
+            await self._watchdog.stop()
+            self._watchdog = None
         await super().on_shutdown()
         if self._owns_client and self._client is not None:
             try:

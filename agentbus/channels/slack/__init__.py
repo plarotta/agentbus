@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from agentbus.channels.base import ChannelPlugin
+from agentbus.channels.base import ChannelPlugin, ProbeResult
 from agentbus.channels.loader import register_plugin
 from agentbus.gateway import GatewayNode
 
@@ -26,6 +26,28 @@ from .config import SlackConfig
 class SlackPlugin(ChannelPlugin[SlackConfig]):
     name: ClassVar[str] = "slack"
     ConfigModel: ClassVar[type[SlackConfig]] = SlackConfig
+
+    @classmethod
+    async def probe(cls, config: SlackConfig) -> ProbeResult:
+        """Call Slack's ``auth.test`` with the configured bot token.
+
+        Cheap, well-defined, and the single best signal that the token
+        is still valid. Returns ``fail`` on auth errors, ``warn`` if
+        slack-sdk isn't installed (the embedder may still be using a
+        custom build), ``ok`` otherwise.
+        """
+        try:
+            from slack_sdk.web.async_client import AsyncWebClient
+        except ImportError:
+            return ProbeResult(status="warn", detail="slack-sdk not installed")
+        client = AsyncWebClient(token=config.bot_token)
+        try:
+            resp = await client.auth_test()
+            team = resp.get("team") or resp.get("team_id") or "unknown"
+            user = resp.get("user") or resp.get("user_id") or "unknown"
+            return ProbeResult(status="ok", detail=f"team={team} bot={user}")
+        except Exception as exc:
+            return ProbeResult(status="fail", detail=str(exc))
 
     @classmethod
     def setup_wizard(cls, existing: dict | None = None) -> SlackConfig:

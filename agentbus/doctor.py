@@ -136,6 +136,55 @@ def _check_provider_deps(path: Path) -> list[Check]:
     return checks
 
 
+def _check_channels(path: Path) -> list[Check]:
+    """Per-channel probe: validate each configured channel's auth/transport.
+
+    Skipped silently if the config is missing or has no ``channels:``
+    block. Plugins without a ``probe()`` return ``warn`` ("no probe
+    implemented") which surfaces as informational, not a hard failure.
+    """
+    if not path.exists():
+        return []
+    try:
+        import yaml
+
+        raw = yaml.safe_load(path.read_text()) or {}
+    except Exception as exc:
+        return [Check("channels config parse", "fail", str(exc))]
+    channels_block = raw.get("channels")
+    if not channels_block:
+        return []
+
+    from agentbus.channels import load_channels_from_dict
+
+    try:
+        pairs = load_channels_from_dict(channels_block)
+    except Exception as exc:
+        return [Check("channels config", "fail", str(exc))]
+
+    async def _run_probes() -> list[Check]:
+        results: list[Check] = []
+        for plugin_cls, config in pairs:
+            try:
+                probe = await plugin_cls.probe(config)
+            except Exception as exc:
+                results.append(Check(f"channel {plugin_cls.name!r}", "fail", str(exc)))
+                continue
+            results.append(
+                Check(
+                    f"channel {plugin_cls.name!r}",
+                    probe.status,
+                    probe.detail,
+                )
+            )
+        return results
+
+    try:
+        return asyncio.run(_run_probes())
+    except Exception as exc:
+        return [Check("channels probe", "fail", str(exc))]
+
+
 def _check_socket(path: str) -> Check:
     """Only reports OK if the socket exists AND responds to a `topics` command."""
     if not Path(path).exists():
@@ -198,6 +247,7 @@ def run(config_path: Path | str = "agentbus.yaml", socket_path: str | None = Non
         _check_socket_path_length(socket_path),
         _check_config(cfg),
         *_check_provider_deps(cfg),
+        *_check_channels(cfg),
         _check_socket(socket_path),
     ]
 

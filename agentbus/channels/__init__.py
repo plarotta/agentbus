@@ -16,6 +16,8 @@ from .base import (
     MAX_CONSECUTIVE_GATEWAY_FAILURES,
     ChannelPlugin,
     ChannelRuntimeError,
+    ProbeResult,
+    ProbeStatus,
 )
 from .loader import (
     ChannelsRuntime,
@@ -30,6 +32,8 @@ __all__ = [
     "ChannelPlugin",
     "ChannelRuntimeError",
     "ChannelsRuntime",
+    "ProbeResult",
+    "ProbeStatus",
     "load_channels_from_dict",
     "open_channels_runtime",
     "register_plugin",
