@@ -231,7 +231,7 @@ agentbus chat [--config PATH] [--provider NAME] [--model NAME] \
 | `--no-memory` | Disable the memory node for this run (overrides `memory.enabled` in config). |
 | `--verbose` | Print `↳ tool_name` lines from `/planning/status` during the run. |
 | `--quiet` | Suppress non-essential output. |
-| `--headless` | Force stdin/stdout I/O — never launch the textual TUI. |
+| `--headless` | Force stdin/stdout I/O — never launch the interactive TUI. |
 
 **Slash commands** (inside the chat session): `/topics`, `/nodes`, `/graph`,
 `/echo <topic>`, `/session [list|new|load <id>]`, `/tools`, `/trace [cid|topic]

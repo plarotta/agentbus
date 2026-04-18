@@ -17,7 +17,7 @@ ollama = ["httpx"]
 anthropic = ["anthropic"]
 openai = ["openai"]
 cli = ["typer"]
-tui = ["textual>=0.47.0"]
+tui = ["prompt_toolkit>=3.0", "rich>=13.0"]
 mcp = ["mcp>=1.0"]
 slack = ["slack-bolt>=1.18"]
 telegram = ["httpx"]
@@ -27,7 +27,8 @@ all = [
     "anthropic",
     "openai",
     "typer",
-    "textual>=0.47.0",
+    "prompt_toolkit>=3.0",
+    "rich>=13.0",
     "mcp>=1.0",
     "slack-bolt>=1.18",
 ]
@@ -35,7 +36,8 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "mkdocs-material>=9.0",
-    "textual-dev>=0.47.0",
+    "prompt_toolkit>=3.0",
+    "rich>=13.0",
     "ruff>=0.6.0",
     "mypy>=1.11",
     "pre-commit>=3.7",
@@ -86,7 +88,7 @@ ignore = [
 # TUI/CLI strings use typographic glyphs (❯, ↳) by design.
 "agentbus/chat/_config.py" = ["RUF001"]
 "agentbus/chat/_runner.py" = ["RUF001"]
-"agentbus/chat/_tui.py" = ["RUF001"]
+"agentbus/chat/_tui.py" = ["RUF001", "RUF002"]
 "agentbus/schemas/harness.py" = ["RUF003"]
 # Node lifecycle hooks are *optional* overrides by design, not abstract methods.
 "agentbus/node.py" = ["B027"]
@@ -144,7 +146,8 @@ module = [
     "anthropic.*",
     "openai.*",
     "httpx.*",
-    "textual.*",
+    "prompt_toolkit.*",
+    "rich.*",
     "yaml",
     "mcp",
     "mcp.*",

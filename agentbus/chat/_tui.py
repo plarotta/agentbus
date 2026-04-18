@@ -1,43 +1,37 @@
-"""Full textual TUI for agentbus chat (Phase 3).
+"""Interactive chat UI for `agentbus chat` — Claude-Code-style.
 
-Requires: pip install textual  (or uv sync --extra tui)
+Requires: ``uv sync --extra tui`` (prompt_toolkit + rich).
 
-Layout:
+Design: no fullscreen takeover. Normal terminal scrollback is preserved.
+Input is a prompt_toolkit prompt with persistent history and a bottom
+toolbar; responses stream through rich as rendered Markdown; live tool
+dispatches print dimmed inline above the prompt while the user keeps
+typing.
 
-    ┌─ AgentBus • provider/model • session ──────────────────┐
-    │                                                         │
-    │  conversation scroll area                               │
-    │                                                         │
-    ├─ [status line] ─────────────────────────────────────────┤  ← hidden when idle
-    │ >  input                                                │
-    └─────────────────────────────────────────────────────────┘
+    AgentBus v0.1.0 • anthropic/claude-haiku-4-5 • 4 tools
+    Type /help for commands, Ctrl-D to exit.
 
-Inspect mode (Ctrl-I or /inspect):
+    ❯ what's in /etc/hostname
+      ↳ file_read
+    The hostname file contains `example.local`.
 
-    ┌─ AgentBus ──────────────────────────────────────────────┐
-    │  conversation                                           │
-    ├─── inspect ─────────────────────────────────────────────┤
-    │  live topic feed                                        │
-    ├─────────────────────────────────────────────────────────┤
-    │ > input                                                 │
-    └─────────────────────────────────────────────────────────┘
+    ❯ ▏
+     AgentBus • anthropic/claude-haiku-4-5 • 4 tools • session a1b2c3d4
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Callable
-from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.containers import ScrollableContainer, Vertical
-from textual.css.query import NoMatches
-from textual.message import Message as TUIMessage
-from textual.reactive import reactive
-from textual.widgets import Input, Log, Static
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.patch_stdout import patch_stdout
+from rich.console import Console
+from rich.markdown import Markdown
 
 from agentbus.schemas.common import InboundChat, OutboundChat
 from agentbus.schemas.harness import PlannerStatus
@@ -51,322 +45,172 @@ if TYPE_CHECKING:
     from ._planner import ChatPlannerNode
 
 _AGENTBUS_VERSION = "0.1.0"
+_DEFAULT_HISTORY_PATH = Path.home() / ".agentbus" / "history"
+_RESPONSE_TIMEOUT_S = 300.0
 
 
-# ---------------------------------------------------------------------------
-# Custom Textual messages (for cross-task communication)
-# ---------------------------------------------------------------------------
+class ChatApp:
+    """prompt_toolkit + rich chat loop.
 
-
-class ResponseReceived(TUIMessage):
-    """Fired when /outbound delivers a response."""
-
-    def __init__(self, text: str) -> None:
-        super().__init__()
-        self.text = text
-
-
-class StatusUpdated(TUIMessage):
-    """Fired when /planning/status delivers a new event."""
-
-    def __init__(self, status: PlannerStatus) -> None:
-        super().__init__()
-        self.status = status
-
-
-class InspectLine(TUIMessage):
-    """Fired when a message arrives that should be shown in the inspect pane."""
-
-    def __init__(self, line: str) -> None:
-        super().__init__()
-        self.line = line
-
-
-# ---------------------------------------------------------------------------
-# Conversation message widget
-# ---------------------------------------------------------------------------
-
-
-class ChatMessage(Static):
-    """A single message bubble in the conversation area."""
-
-    DEFAULT_CSS = """
-    ChatMessage {
-        padding: 0 1;
-        margin: 0 0 1 0;
-    }
-    ChatMessage.user {
-        color: $text;
-    }
-    ChatMessage.assistant {
-        color: $success;
-    }
-    ChatMessage.system {
-        color: $warning;
-        text-style: dim;
-    }
-    ChatMessage.tool_dispatch {
-        color: $text-muted;
-        text-style: dim;
-        padding: 0 2;
-    }
+    The bus and nodes are owned by the caller (the runner) — this class
+    only drives I/O: read one line, publish it, await one response, render.
+    PlannerStatus events stream continuously and update the bottom toolbar
+    plus print dim inline tool-dispatch markers above the prompt.
     """
-
-    def __init__(self, role: str, text: str) -> None:
-        prefix = {
-            "user": "> ",
-            "assistant": "",
-            "system": "  ",
-            "tool_dispatch": "  ↳ ",
-        }.get(role, "")
-        super().__init__(prefix + text, classes=role)
-
-
-# ---------------------------------------------------------------------------
-# Status bar widget
-# ---------------------------------------------------------------------------
-
-
-class StatusBar(Static):
-    """Single-line status between conversation and input. Hidden when idle."""
-
-    DEFAULT_CSS = """
-    StatusBar {
-        height: 1;
-        padding: 0 1;
-        background: $surface;
-        color: $text-muted;
-        text-style: dim;
-    }
-    StatusBar.hidden {
-        display: none;
-    }
-    """
-
-    status_text: reactive[str] = reactive("")
-
-    def render(self) -> str:
-        return self.status_text
-
-    def set_status(self, text: str) -> None:
-        if text:
-            self.remove_class("hidden")
-        else:
-            self.add_class("hidden")
-        self.status_text = text
-
-
-# ---------------------------------------------------------------------------
-# Main App
-# ---------------------------------------------------------------------------
-
-
-class ChatApp(App[None]):
-    """Full-screen textual TUI for agentbus chat."""
-
-    CSS = """
-    Screen {
-        layout: vertical;
-    }
-
-    #header-bar {
-        height: 1;
-        background: $accent;
-        color: $text;
-        padding: 0 1;
-        text-style: bold;
-    }
-
-    #conversation {
-        height: 1fr;
-        border: none;
-        padding: 1 1 0 1;
-        overflow-y: scroll;
-    }
-
-    #inspect-container {
-        height: 8;
-        border-top: solid $surface-lighten-2;
-        display: none;
-    }
-
-    #inspect-container.visible {
-        display: block;
-    }
-
-    #inspect-log {
-        height: 100%;
-        scrollbar-size: 1 1;
-    }
-
-    #status-bar {
-        height: 1;
-        padding: 0 1;
-        background: $surface;
-        color: $text-muted;
-        text-style: dim;
-    }
-
-    #status-bar.hidden {
-        display: none;
-    }
-
-    #input-area {
-        height: 3;
-        border-top: solid $surface-lighten-2;
-        padding: 0 1;
-    }
-
-    #chat-input {
-        width: 100%;
-    }
-    """
-
-    BINDINGS = [
-        Binding("ctrl+i", "toggle_inspect", "Inspect", show=True),
-        Binding("ctrl+d", "quit_session", "Quit", show=True),
-        Binding("escape", "clear_status", "Clear", show=False),
-    ]
 
     def __init__(
         self,
         config: ChatConfig,
-        build_bus: Callable[
-            [],
-            tuple[
-                MessageBus,
-                ChatPlannerNode,
-                asyncio.Queue[OutboundChat],
-                asyncio.Queue[PlannerStatus],
-            ],
-        ],
+        bus: MessageBus,
+        planner: ChatPlannerNode,
+        response_queue: asyncio.Queue[OutboundChat],
+        status_queue: asyncio.Queue[PlannerStatus],
+        *,
+        history_path: Path | None = None,
     ) -> None:
-        super().__init__()
         self._config = config
-        self._build_bus = build_bus
-        self._bus: MessageBus | None = None
-        self._planner: ChatPlannerNode | None = None
-        self._bus_task: asyncio.Task | None = None
-        self._response_task: asyncio.Task | None = None
-        self._status_task: asyncio.Task | None = None
-        self._inspect_pattern: str | None = None
-        self._response_queue: asyncio.Queue[OutboundChat] | None = None
-        self._status_queue: asyncio.Queue[PlannerStatus] | None = None
+        self._bus = bus
+        self._planner = planner
+        self._response_queue = response_queue
+        self._status_queue = status_queue
+        self._console = Console()
+        self._current_status: str = ""
+        self._awaiting_response: bool = False
 
-    def compose(self) -> ComposeResult:
-        model_str = f"{self._config.provider}/{self._config.model}"
-        yield Static(
-            f"AgentBus v{_AGENTBUS_VERSION} • {model_str}",
-            id="header-bar",
+        history_path = history_path or _DEFAULT_HISTORY_PATH
+        with contextlib.suppress(OSError):
+            history_path.parent.mkdir(parents=True, exist_ok=True)
+
+        self._session: PromptSession[str] = PromptSession(
+            history=FileHistory(str(history_path)),
+            bottom_toolbar=self._bottom_toolbar,
+            refresh_interval=0.5,
         )
-        with ScrollableContainer(id="conversation"):
-            pass
-        with Vertical(id="inspect-container"):
-            yield Log(id="inspect-log", highlight=True)
-        yield Static("", id="status-bar", classes="hidden")
-        with Vertical(id="input-area"):
-            yield Input(placeholder="Type a message…", id="chat-input")
 
-    # ── Lifecycle ─────────────────────────────────────────────────────────────
+    # ── Toolbar ─────────────────────────────────────────────────────────────
 
-    async def on_mount(self) -> None:
-        (
-            self._bus,
-            self._planner,
-            self._response_queue,
-            self._status_queue,
-        ) = self._build_bus()
-        self._bus_task = asyncio.create_task(self._bus.spin())
-        self._response_task = asyncio.create_task(self._poll_responses())
-        self._status_task = asyncio.create_task(self._poll_status())
-        self.query_one("#chat-input").focus()
+    def _bottom_toolbar(self) -> HTML:
+        model = f"{self._config.provider}/{self._config.model}"
+        tools = len(self._config.tools)
+        sid = (
+            self._planner.session.session_id[:8]
+            if self._planner is not None and self._planner.session is not None
+            else "—"
+        )
+        status = (
+            f" • <ansiyellow>{self._current_status}</ansiyellow>" if self._current_status else ""
+        )
+        return HTML(f" <b>AgentBus</b> • {model} • {tools} tools • session {sid}{status}")
 
-    async def on_unmount(self) -> None:
-        for task in (
-            getattr(self, "_response_task", None),
-            getattr(self, "_status_task", None),
-        ):
-            if task is not None:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await task
-        if self._bus_task:
-            self._bus_task.cancel()
+    def _invalidate(self) -> None:
+        """Redraw the toolbar — safe to call even before the session is running."""
+        app = getattr(self._session, "app", None)
+        if app is not None:
+            with contextlib.suppress(Exception):
+                app.invalidate()
+
+    # ── Entry point ─────────────────────────────────────────────────────────
+
+    async def run(self) -> None:
+        self._print_banner()
+
+        status_task = asyncio.create_task(self._drain_status())
+        try:
+            with patch_stdout(raw=True):
+                while True:
+                    try:
+                        text = await self._session.prompt_async("❯ ")
+                    except EOFError:
+                        break
+                    except KeyboardInterrupt:
+                        # Per shell convention: Ctrl-C clears the current line,
+                        # Ctrl-D exits. prompt_toolkit raises KeyboardInterrupt
+                        # on Ctrl-C — swallow and redraw.
+                        continue
+
+                    text = text.strip()
+                    if not text:
+                        continue
+
+                    if text.startswith("/"):
+                        quit_requested = await self._handle_slash(text)
+                        if quit_requested:
+                            break
+                        continue
+
+                    self._bus.publish(
+                        "/inbound",
+                        InboundChat(channel="tui", sender="user", text=text),
+                    )
+                    await self._await_response()
+        finally:
+            status_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
-                await asyncio.wait_for(self._bus_task, timeout=3.0)
+                await status_task
 
-    # ── Queue polling ─────────────────────────────────────────────────────────
+    # ── Rendering ───────────────────────────────────────────────────────────
 
-    async def _poll_responses(self) -> None:
-        while True:
-            response: OutboundChat = await self._response_queue.get()
-            self.post_message(ResponseReceived(response.text))
+    def _print_banner(self) -> None:
+        model = f"{self._config.provider}/{self._config.model}"
+        tools = len(self._config.tools)
+        self._console.print(
+            f"[bold cyan]AgentBus[/bold cyan] v{_AGENTBUS_VERSION} "
+            f"[dim]• {model} • {tools} tools[/dim]"
+        )
+        self._console.print("[dim]Type /help for commands, Ctrl-D to exit.[/dim]")
+        self._console.print()
 
-    async def _poll_status(self) -> None:
+    async def _drain_status(self) -> None:
         while True:
             status: PlannerStatus = await self._status_queue.get()
-            self.post_message(StatusUpdated(status))
+            label = self._status_label(status)
+            if label is not None:
+                self._current_status = label
+                self._invalidate()
+            # Echo tool dispatches inline only while we're actively waiting
+            # for a response — otherwise bus-internal traffic would scroll
+            # into the terminal.
+            if status.event == "tool_dispatched" and status.tool_name and self._awaiting_response:
+                self._console.print(f"  [dim]↳ {status.tool_name}[/dim]")
 
-    # ── Message handlers ──────────────────────────────────────────────────────
-
-    def on_response_received(self, event: ResponseReceived) -> None:
-        self._append_message("assistant", event.text)
-        self._set_status("")
-
-    def on_status_updated(self, event: StatusUpdated) -> None:
-        status = event.status
+    @staticmethod
+    def _status_label(status: PlannerStatus) -> str | None:
         ev = status.event
-
-        # Update status bar
         if ev == "thinking":
-            self._set_status("[thinking...]")
-        elif ev == "tool_dispatched" and status.tool_name:
-            self._set_status(f"[dispatching: {status.tool_name}]")
-            # Also show in conversation as dim tool dispatch line
-            self._append_message("tool_dispatch", status.tool_name)
-            # And in inspect pane if open
-            ts = datetime.now().strftime("%H:%M:%S")
-            self.post_message(InspectLine(f"[{ts}] tool_dispatched → {status.tool_name}"))
-        elif ev == "tool_received" and status.tool_name:
-            self._set_status(f"[received: {status.tool_name}]")
-            ts = datetime.now().strftime("%H:%M:%S")
-            self.post_message(InspectLine(f"[{ts}] tool_received ← {status.tool_name}"))
-        elif ev == "responding":
-            self._set_status("[responding...]")
-        elif ev == "error":
-            detail = status.detail or "unknown error"
-            self._set_status(f"[error: {detail}]")
+            return "thinking…"
+        if ev == "tool_dispatched" and status.tool_name:
+            return f"↳ {status.tool_name}"
+        if ev == "tool_received" and status.tool_name:
+            return f"← {status.tool_name}"
+        if ev == "compacting":
+            return "compacting…"
+        if ev == "responding":
+            return "responding…"
+        if ev == "error":
+            return f"error: {status.detail or 'unknown'}"
+        return None
 
-    def on_inspect_line(self, event: InspectLine) -> None:
+    async def _await_response(self) -> None:
+        self._awaiting_response = True
+        self._invalidate()
         try:
-            log = self.query_one("#inspect-log", Log)
-            log.write_line(event.line)
-        except NoMatches:
-            pass
-
-    # ── Input handling ────────────────────────────────────────────────────────
-
-    async def on_input_submitted(self, event: Input.Submitted) -> None:
-        text = event.value.strip()
-        if not text:
+            response: OutboundChat = await asyncio.wait_for(
+                self._response_queue.get(), timeout=_RESPONSE_TIMEOUT_S
+            )
+        except TimeoutError:
+            self._console.print("[red]⚠ response timed out after 5 minutes[/red]")
             return
-        event.input.clear()
+        finally:
+            self._awaiting_response = False
+            self._current_status = ""
+            self._invalidate()
 
-        if text.startswith("/"):
-            await self._handle_slash(text)
-            return
+        self._console.print()
+        self._console.print(Markdown(response.text))
+        self._console.print()
 
-        # Show user message
-        self._append_message("user", text)
-        self._set_status("[thinking...]")
-
-        # Publish to bus
-        self._bus.publish(
-            "/inbound",
-            InboundChat(channel="tui", sender="user", text=text),
-        )
-
-    async def _handle_slash(self, text: str) -> None:
+    async def _handle_slash(self, text: str) -> bool:
+        """Run a slash command. Returns True if the session should quit."""
         result: CommandResult = await handle_command(
             text,
             bus=self._bus,
@@ -374,48 +218,35 @@ class ChatApp(App[None]):
             config=self._config,
         )
         if result.quit:
-            await self.action_quit_session()
-            return
+            return True
         if result.inspect_toggle is not None:
-            await self.action_toggle_inspect(result.inspect_toggle)
+            self._console.print(
+                "[dim]Inspect pane is retired. For a live topic feed, run "
+                "`agentbus topic echo <topic>` in another terminal.[/dim]"
+            )
         if result.output is not None:
-            self._append_message("system", result.output)
+            self._console.print(result.output)
         if result.error:
-            self._append_message("system", f"Error: {result.error}")
+            self._console.print(f"[red]Error:[/red] {result.error}")
+        return False
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _append_message(self, role: str, text: str) -> None:
-        conv = self.query_one("#conversation")
-        conv.mount(ChatMessage(role, text))
-        conv.scroll_end(animate=False)
-
-    def _set_status(self, text: str) -> None:
-        bar = self.query_one("#status-bar")
-        if text:
-            bar.remove_class("hidden")
-        else:
-            bar.add_class("hidden")
-        bar.update(text)
-
-    # ── Actions ───────────────────────────────────────────────────────────────
-
-    async def action_toggle_inspect(self, pattern: str = "**") -> None:
-        container = self.query_one("#inspect-container")
-        if container.has_class("visible"):
-            container.remove_class("visible")
-            self._inspect_pattern = None
-        else:
-            container.add_class("visible")
-            self._inspect_pattern = pattern
-            log = self.query_one("#inspect-log", Log)
-            log.clear()
-            log.write_line(f"[inspect: {pattern}]")
-
-    async def action_quit_session(self) -> None:
-        if self._bus_task:
-            self._bus_task.cancel()
-        await self.exit()
-
-    def action_clear_status(self) -> None:
-        self._set_status("")
+async def run_tui_app(
+    config: ChatConfig,
+    bus: MessageBus,
+    planner: ChatPlannerNode,
+    response_queue: asyncio.Queue[OutboundChat],
+    status_queue: asyncio.Queue[PlannerStatus],
+    *,
+    history_path: Path | None = None,
+) -> None:
+    """Convenience wrapper — builds the app and runs the prompt loop."""
+    app = ChatApp(
+        config,
+        bus,
+        planner,
+        response_queue,
+        status_queue,
+        history_path=history_path,
+    )
+    await app.run()

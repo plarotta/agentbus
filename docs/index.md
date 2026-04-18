@@ -34,7 +34,7 @@ pip install "agentbus[ollama]"
 # with CLI tools
 pip install "agentbus[cli]"
 
-# textual TUI for `agentbus chat`
+# interactive TUI for `agentbus chat` (prompt_toolkit + rich)
 pip install "agentbus[tui]"
 
 # MCP stdio servers (registers their tools with the planner)

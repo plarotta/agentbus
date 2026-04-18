@@ -15,7 +15,7 @@ A ROS-inspired typed pub/sub message bus for LLM agent orchestration. Local-firs
 ```bash
 uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
-uv sync --extra tui          # install textual for the chat TUI
+uv sync --extra tui          # install prompt_toolkit + rich for the chat TUI
 uv sync --extra mcp          # install the MCP SDK for mcp_servers: in agentbus.yaml
 uv sync --extra slack        # install slack-bolt for channels.slack gateway
 uv sync --extra telegram     # install httpx for channels.telegram gateway
@@ -72,7 +72,7 @@ agentbus/
 │   ├── _planner.py          # ChatPlannerNode (wraps Harness, bridges tool calls through the bus)
 │   ├── _tools.py            # ChatToolNode + TOOL_SCHEMAS/TOOL_HANDLERS (bash, file_read, file_write, code_exec)
 │   ├── _commands.py         # slash-command dispatcher + CommandResult
-│   └── _tui.py              # textual-based split-pane TUI (optional — requires `textual`)
+│   └── _tui.py              # prompt_toolkit + rich interactive shell (optional — requires `prompt_toolkit`, `rich`)
 ├── channels/                # Multi-channel gateway plugins (Slack, Telegram)
 │   ├── __init__.py          # ChannelPlugin, ChannelRuntimeError, load_channels_from_dict, register_plugin
 │   ├── base.py              # ChannelPlugin[ConfigT] ABC, MAX_CONSECUTIVE_GATEWAY_FAILURES
@@ -182,7 +182,7 @@ Phase 1–2 tests run without a `MessageBus` instance. `Topic` fan-out tests pas
 ### Graceful shutdown contract
 `MessageBus.spin(drain_timeout=0.0, install_signal_handlers=False)` controls lifecycle exit:
 - `drain_timeout` — seconds to let node loops keep pulling queued messages after shutdown is triggered (external timeout, signal, or stop_event). Default 0.0 cancels loops immediately on shutdown — best for tests and bounded runs. Once elapsed, remaining loops are force-cancelled.
-- `install_signal_handlers` — when True, SIGTERM/SIGINT trigger cooperative exit via `stop_event`. A **second** signal escalates to immediate cancel (skips the drain window). Default False because library embedders (and the textual TUI) manage their own signals. `agentbus launch` wires `install_signal_handlers=True, drain_timeout=5.0` by default; `bus.shutdown.drain_timeout` / `bus.shutdown.install_signal_handlers` in `agentbus.yaml` override.
+- `install_signal_handlers` — when True, SIGTERM/SIGINT trigger cooperative exit via `stop_event`. A **second** signal escalates to immediate cancel (skips the drain window). Default False because library embedders (and the chat TUI) manage their own signals. `agentbus launch` wires `install_signal_handlers=True, drain_timeout=5.0` by default; `bus.shutdown.drain_timeout` / `bus.shutdown.install_signal_handlers` in `agentbus.yaml` override.
 - `until` and `max_messages` still exit each node loop immediately (developer-controlled bounds); `drain_timeout` is irrelevant to those paths since the loops have already returned by the time shutdown runs.
 - `add_signal_handler` failures (Windows, worker threads) are swallowed — installation is a no-op on those platforms, not a crash.
 
@@ -274,7 +274,7 @@ agentbus channels setup slack                      # wizard → writes channels.
 - **Nodes**: `ChatPlannerNode` (subscribes `/inbound`, publishes `/outbound`, `/tools/request`, `/planning/status`; `concurrency_mode="serial"`), `ChatToolNode` (subscribes `/tools/request`, publishes `/tools/result`), `_ChatCaptureNode` (read-only bridge: `/outbound` and `/planning/status` → asyncio Queues the runner awaits).
 - **Tool-call bridge**: the planner's `tool_executor` callback calls `bus.request("/tools/request", ..., reply_on="/tools/result", timeout=60)` — this is the ONLY path from harness → bus. `ChatToolNode.on_message` executes the handler and publishes `BusToolResult` with `correlation_id=msg.correlation_id` so the request future resolves. `HarnessToolResult` and `BusToolResult` are mapped explicitly in `tool_executor`.
 - **Known-benign log filter**: `_ChatBusFilter` is installed on `agentbus.bus` logger during `ChatSession.run()` to suppress "no publishers" (for `/inbound`, which the runner publishes directly) and "no subscribers" (for `/tools/result`, which uses pending futures). Removed in `finally`.
-- **I/O modes**, selected at `_run_inner`: headless stdin/stdout (always available), verbose headless (prints `↳ tool_name` lines from `/planning/status`), and textual TUI (only when stdout is a TTY AND `textual` is importable AND `--headless` is not set). TUI lives in `chat/_tui.py`; test files mock it out.
+- **I/O modes**, selected at `_run_inner`: headless stdin/stdout (always available), verbose headless (prints `↳ tool_name` lines from `/planning/status`), and the prompt_toolkit + rich TUI (only when stdout is a TTY AND both `prompt_toolkit` and `rich` are importable AND `--headless` is not set). TUI lives in `chat/_tui.py` — a non-fullscreen shell (normal scrollback preserved) with persistent input history, a bottom toolbar, inline `↳ tool_name` dim lines, and markdown-rendered responses. Test files mock it out.
 - **Session persistence**: `Session` objects at `~/.agentbus/sessions/<uuid>/main.json`. Resume with `agentbus chat --session <id>`. `_cmd_session_list` reads from `DEFAULT_SESSION_ROOT` in `harness/session.py`.
 - **Slash commands**: parsed by `chat/_commands.py::handle_command`. Returns a `CommandResult` with fields `output`, `quit`, `inspect_toggle` (TUI-only signal), `error`. New commands should return `CommandResult`, never print directly — the runner/TUI owns the output surface. `/trace` walks `bus._message_log` by `correlation_id`; `/usage` aggregates `session.turns[].token_count` by role.
 - **Tool definitions** live in `chat/_tools.py::TOOL_SCHEMAS` (LLM-facing JSON schema) and `TOOL_HANDLERS` (async handlers). Adding a tool requires an entry in both dicts plus listing its name in `ChatConfig.tools`.

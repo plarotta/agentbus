@@ -76,28 +76,6 @@ def _terminal_width() -> int:
         return 80
 
 
-def _reset_terminal() -> None:
-    """Unconditionally restore terminal to sane state after TUI exit.
-
-    Textual normally cleans up on its own, but if the app crashes or is killed
-    mid-teardown the terminal can be left with mouse tracking enabled or in the
-    alt-screen buffer, which makes the shell unusable. These escape sequences
-    are idempotent and safe to emit even if textual already cleaned up.
-    """
-    if not sys.stdout.isatty():
-        return
-    sys.stdout.write(
-        "\033[?1000l"  # disable X11 mouse reporting
-        "\033[?1002l"  # disable cell-motion tracking
-        "\033[?1003l"  # disable all-motion tracking
-        "\033[?1006l"  # disable SGR mouse mode
-        "\033[?1049l"  # exit alternate screen buffer
-        "\033[?25h"  # show cursor
-        "\033[0m"  # reset SGR (colors/attrs)
-    )
-    sys.stdout.flush()
-
-
 # ---------------------------------------------------------------------------
 # Internal capture node — bridges bus messages to asyncio Queues
 # ---------------------------------------------------------------------------
@@ -133,10 +111,10 @@ class _ChatCaptureNode(Node):
 class ChatSession:
     """Manages a full agentbus chat session: bus, nodes, and I/O.
 
-    Supports three I/O modes:
-      * headless — plain stdin/stdout (Phase 1)
-      * headless + verbose — headless with inline tool dispatch display (Phase 2)
-      * tui — textual split-pane UI (Phase 3, requires textual)
+    Three I/O modes:
+      * headless — plain stdin/stdout (scripts, CI, piped input)
+      * headless + verbose — headless with inline tool-dispatch lines
+      * tui — prompt_toolkit + rich (requires `uv sync --extra tui`)
     """
 
     def __init__(
@@ -231,15 +209,13 @@ class ChatSession:
     def _make_approval_callback(self):
         """Return a callback suitable for the active I/O mode.
 
-        Headless + TTY: prompt the user via stdin, fail closed on EOF.
-        Headless + non-TTY (piped input, tests): deny everything — the planner
-            sees a permission-denied result and moves on.
-        TUI: no approval path is wired yet, so gated tools are denied (callback
-            is ``None``). Extending textual to surface a modal prompt is future
-            work; until then, set ``mode: allow`` for any tool you need through
-            the TUI.
+        TTY (headless or TUI): prompt the user via stdin, fail closed on EOF.
+            Under the prompt_toolkit TUI, ``patch_stdout`` lets the approval
+            prompt surface between turns without corrupting the input line.
+        Non-TTY (piped input, tests): deny everything — the planner sees a
+            permission-denied result and moves on.
         """
-        if not self._headless or not _is_terminal():
+        if not _is_terminal():
             return None
 
         async def _prompt(tool: str, params: dict, reason: str) -> bool:
@@ -396,17 +372,16 @@ class ChatSession:
     # ── TUI ──────────────────────────────────────────────────────────────────
 
     async def _run_tui(self) -> None:
-        from ._tui import ChatApp
+        from ._tui import run_tui_app
 
-        app = ChatApp(
+        assert self._bus is not None and self._planner is not None
+        await run_tui_app(
             config=self._config,
-            build_bus=self._build_bus_for_tui,
+            bus=self._bus,
+            planner=self._planner,
+            response_queue=self._response_queue,
+            status_queue=self._status_queue,
         )
-        await app.run_async()
-
-    def _build_bus_for_tui(self):
-        """Called by the TUI app to get the pre-built bus, planner, and capture queues."""
-        return self._bus, self._planner, self._response_queue, self._status_queue
 
     # ── Entry point ──────────────────────────────────────────────────────────
 
@@ -460,9 +435,17 @@ class ChatSession:
 
         self._bus = self._build_bus()
 
-        tool_count = len(self._config.tools)
+        use_tui = (
+            not self._headless
+            and _is_terminal()
+            and importlib.util.find_spec("prompt_toolkit") is not None
+            and importlib.util.find_spec("rich") is not None
+        )
 
-        if _is_terminal():
+        # Headless mode prints its own banner; TUI mode prints a richer one
+        # from inside the prompt_toolkit app.
+        if not use_tui and _is_terminal():
+            tool_count = len(self._config.tools)
             print(
                 f"AgentBus v{_AGENTBUS_VERSION} • "
                 f"provider: {self._config.provider}/{self._config.model} • "
@@ -470,18 +453,9 @@ class ChatSession:
             )
             print("Type /help for commands\n")
 
-        use_tui = (
-            not self._headless
-            and _is_terminal()
-            and importlib.util.find_spec("textual") is not None
-        )
-
-        # TUI mode spins the bus itself inside ChatApp.on_mount so its task is
-        # bound to the app lifecycle. Headless mode spins here so the bus is
-        # running before the input loop starts reading stdin.
-        bus_task: asyncio.Task | None = None
-        if not use_tui:
-            bus_task = asyncio.create_task(self._bus.spin())
+        # Both modes run the bus as a background task so publish/wait_for
+        # cycles in the input loop complete against a spinning bus.
+        bus_task = asyncio.create_task(self._bus.spin())
 
         try:
             if use_tui:
@@ -492,7 +466,6 @@ class ChatSession:
                         "[warn] TUI failed to start, falling back to headless mode.",
                         file=sys.stderr,
                     )
-                    bus_task = asyncio.create_task(self._bus.spin())
                     await self._run_headless_loop()
             else:
                 await self._run_headless_loop()
@@ -500,10 +473,9 @@ class ChatSession:
         except (KeyboardInterrupt, asyncio.CancelledError):
             pass
         finally:
-            if bus_task is not None:
-                bus_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await asyncio.wait_for(bus_task, timeout=5.0)
+            bus_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await asyncio.wait_for(bus_task, timeout=5.0)
             if self._mcp_runtime is not None:
                 with contextlib.suppress(Exception):
                     await self._mcp_runtime.aclose()
@@ -512,8 +484,6 @@ class ChatSession:
                 with contextlib.suppress(Exception):
                     self._memory_runtime.close()
                 self._memory_runtime = None
-            if use_tui:
-                _reset_terminal()
             if _is_terminal():
                 self._print_session_summary()
 
