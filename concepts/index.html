@@ -1,0 +1,1532 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ROS-inspired typed pub/sub message bus for LLM agent orchestration">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../bus/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Concepts - AgentBus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#concepts" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentBus" class="md-header__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentBus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Concepts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../bus/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentBus" class="md-nav__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentBus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-agentbus-solves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The problem AgentBus solves
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core abstractions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core abstractions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#messaget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message[T]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic[T]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#messagebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MessageBus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#message-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-requestreply-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The request/reply pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wildcard-subscriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wildcard subscriptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#concurrency-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-agent-orchestration-swarm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-agent orchestration (swarm)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-channel-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-channel gateways
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circuit-breakers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circuit breakers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key invariants
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../harness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Harness Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../launch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Launch Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-agentbus-solves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The problem AgentBus solves
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core abstractions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core abstractions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#messaget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message[T]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic[T]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#messagebus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MessageBus
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#message-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Message lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-requestreply-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The request/reply pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wildcard-subscriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wildcard subscriptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#concurrency-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-agent-orchestration-swarm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-agent orchestration (swarm)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-channel-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-channel gateways
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#circuit-breakers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circuit breakers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key invariants
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="concepts">Concepts<a class="headerlink" href="#concepts" title="Permanent link">&para;</a></h1>
+<p>This document explains the design philosophy behind AgentBus, how its layers
+relate to each other, and the invariants that hold across the whole system.</p>
+<hr />
+<h2 id="the-problem-agentbus-solves">The problem AgentBus solves<a class="headerlink" href="#the-problem-agentbus-solves" title="Permanent link">&para;</a></h2>
+<p>Most LLM agent frameworks are monolithic loops. The orchestrator calls a tool,
+gets a result, feeds it back to the model, and repeats. This works for a single
+agent but becomes brittle when you need:</p>
+<ul>
+<li><strong>Multiple agents</strong> that hand off work between each other</li>
+<li><strong>Observability</strong> without modifying agent code</li>
+<li><strong>Independent deployability</strong> of tools vs. reasoning</li>
+<li><strong>Schema enforcement</strong> across agent boundaries</li>
+</ul>
+<p>AgentBus takes the ROS approach: components communicate through named,
+typed topics. The broker (bus) owns routing. Components (nodes) own behavior.
+Neither knows the other's internals.</p>
+<hr />
+<h2 id="design-principles">Design principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
+<p><strong>Bus not loop.</strong> The bus is the unit of deployment. Multiple agents can join
+the same bus; each is a node. The bus decides when each node runs — not the
+other way around.</p>
+<p><strong>Typed topics, not function calls.</strong> Nodes declare what they publish and what
+they subscribe to as class-level attributes. Publishing to an undeclared topic
+raises an error at runtime. This forces explicit contracts and makes the wiring
+inspectable.</p>
+<p><strong>Introspection-first.</strong> The bus exposes its full state — topics, nodes, queue
+depths, message history, graph — through a Unix socket that any process can
+query while the bus is running. Observability is not opt-in; it's structural.</p>
+<p><strong>Declare, don't discover.</strong> A node that subscribes to <code>/tools/result</code> must
+declare that in <code>subscriptions</code>. A node that publishes to <code>/tools/request</code> must
+declare that in <code>publications</code>. The bus validates topology before spinning and
+warns (without raising) about common misconfigurations.</p>
+<p><strong>Harness inside, bus outside.</strong> The LLM loop (<code>Harness</code>) has zero imports from
+the bus layer. The only connection is a <code>tool_executor</code> callback injected at
+construction time. This means the harness can be tested without a bus, and
+replaced without touching any node.</p>
+<hr />
+<h2 id="layer-architecture">Layer architecture<a class="headerlink" href="#layer-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌──────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                      your application                     │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│                                                           │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   ┌─────────────────────────────────────────────────┐    │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   │                   MessageBus                     │    │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   │                                                  │    │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   │  Topics: /inbound  /tools/request  /outbound    │    │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   │                                                  │    │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   │  ┌─────────────┐        ┌──────────────────┐   │    │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   │  │ PlannerNode │        │  ToolExecutorNode │   │    │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   │  │             │        │                  │   │    │
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   │  │  ┌────────┐ │        │  pure Python;    │   │    │
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   │  │  │Harness │ │        │  no LLM import   │   │    │
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   │  │  │        │ │        └──────────────────┘   │    │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   │  │  │Session │ │                                │    │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   │  │  └────────┘ │                                │    │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   │  └─────────────┘                                │    │
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   └─────────────────────────────────────────────────┘    │
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│                           │                               │
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│                    Unix socket                            │
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│                           │                               │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   ┌───────────────────────▼───────────────────────┐      │
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   │          agentbus CLI  /  your dashboard       │      │
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   └───────────────────────────────────────────────┘      │
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>└──────────────────────────────────────────────────────────┘
+</code></pre></div>
+<p>There are three distinct layers:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it owns</th>
+<th>What it does NOT touch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bus</strong></td>
+<td>Routing, schema enforcement, fan-out, lifecycle events, introspection</td>
+<td>LLM calls, session state, provider specifics</td>
+</tr>
+<tr>
+<td><strong>Harness</strong></td>
+<td>LLM loop, session history, context compaction, tool dispatch</td>
+<td>Topics, nodes, bus internals</td>
+</tr>
+<tr>
+<td><strong>Providers</strong></td>
+<td>Wire-format translation for each LLM API</td>
+<td>Agent logic, tool execution</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="core-abstractions">Core abstractions<a class="headerlink" href="#core-abstractions" title="Permanent link">&para;</a></h2>
+<h3 id="messaget">Message[T]<a class="headerlink" href="#messaget" title="Permanent link">&para;</a></h3>
+<p>The immutable envelope that wraps every payload on the bus. Nodes never
+construct <code>Message</code> objects — the bus builds them at publish time, guaranteeing
+that <code>source_node</code>, <code>timestamp</code>, and <code>id</code> are set by the infrastructure, not
+by the code that published the message.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Message</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>             <span class="c1"># UUID, auto-generated</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="c1"># UTC, set at publish time</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">source_node</span><span class="p">:</span> <span class="nb">str</span>    <span class="c1"># set by bus — nodes cannot forge this</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>          <span class="c1"># the topic name the message was published to</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">correlation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>   <span class="c1"># used by request/reply pattern</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">payload</span><span class="p">:</span> <span class="n">T</span>          <span class="c1"># the typed payload</span>
+</code></pre></div>
+<p>The <code>frozen=True</code> model config means a <code>Message</code> is immutable once created.
+<code>source_node</code> integrity is a hard invariant: a node cannot claim to be another
+node by constructing a <code>Message</code> with a different <code>source_node</code>.</p>
+<h3 id="topict">Topic[T]<a class="headerlink" href="#topict" title="Permanent link">&para;</a></h3>
+<p>A named channel with a declared payload type. Topics are parameterized at
+class creation time:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">topic</span> <span class="o">=</span> <span class="n">Topic</span><span class="p">[</span><span class="n">ToolRequest</span><span class="p">](</span><span class="s2">&quot;/tools/request&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">topic</span><span class="o">.</span><span class="n">schema</span>  <span class="c1"># → ToolRequest</span>
+</code></pre></div>
+<p>The bus validates every payload against <code>topic.schema</code> before fan-out. A
+<code>TopicSchemaError</code> is raised if the type does not match.</p>
+<p>Topics own three orthogonal features:
+- <strong>Fan-out</strong>: deliver a message to every subscribed node's queue
+- <strong>Retention</strong>: keep the last N messages in a buffer for history queries
+- <strong>Backpressure</strong>: when a subscriber's queue is full, drop messages according
+  to <code>backpressure_policy</code> (<code>"drop-oldest"</code> or <code>"drop-newest"</code>)</p>
+<h3 id="node">Node<a class="headerlink" href="#node" title="Permanent link">&para;</a></h3>
+<p>An agent component. Subclass <code>Node</code>, declare class attributes, override the
+lifecycle hooks you need:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PlannerNode</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;planner&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">subscriptions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/inbound&quot;</span><span class="p">]</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">publications</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="s2">&quot;/tools/request&quot;</span><span class="p">]</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">concurrency_mode</span> <span class="o">=</span> <span class="s2">&quot;serial&quot;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bus</span><span class="p">:</span> <span class="n">BusHandle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<p>Nodes receive a <code>BusHandle</code> in <code>on_init</code> — a narrow interface that lets them
+publish, make request/reply calls, and query topic history. They never hold a
+reference to the <code>MessageBus</code> itself.</p>
+<h3 id="messagebus">MessageBus<a class="headerlink" href="#messagebus" title="Permanent link">&para;</a></h3>
+<p>The broker. It registers topics and nodes, validates topology, runs the spin
+lifecycle, and exposes an introspection API:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">bus</span> <span class="o">=</span> <span class="n">MessageBus</span><span class="p">(</span><span class="n">socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/myapp.sock&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">bus</span><span class="o">.</span><span class="n">register_topic</span><span class="p">(</span><span class="n">Topic</span><span class="p">[</span><span class="n">InboundChat</span><span class="p">](</span><span class="s2">&quot;/inbound&quot;</span><span class="p">,</span> <span class="n">retention</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">bus</span><span class="o">.</span><span class="n">register_node</span><span class="p">(</span><span class="n">PlannerNode</span><span class="p">())</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">await</span> <span class="n">bus</span><span class="o">.</span><span class="n">spin</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="harness">Harness<a class="headerlink" href="#harness" title="Permanent link">&para;</a></h3>
+<p>The self-contained LLM loop. It is <strong>not</strong> a Node. It lives inside a node as
+a private component, receiving messages via <code>on_message</code> and dispatching tool
+calls through the bus via a <code>tool_executor</code> callback:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PlannerNode</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bus</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_harness</span> <span class="o">=</span> <span class="n">Harness</span><span class="p">(</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            <span class="n">provider</span><span class="o">=</span><span class="n">AnthropicProvider</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;claude-haiku-4-5-20251001&quot;</span><span class="p">),</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            <span class="n">tool_executor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_execute_tool</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">],</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            <span class="n">session</span><span class="o">=</span><span class="n">Session</span><span class="p">(),</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_harness</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s2">&quot;/outbound&quot;</span><span class="p">,</span> <span class="n">OutboundChat</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">response</span><span class="p">))</span>
+</code></pre></div>
+<hr />
+<h2 id="message-lifecycle">Message lifecycle<a class="headerlink" href="#message-lifecycle" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bus.publish(topic, payload)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>     │
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>     ├─ validate payload type against topic.schema
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>     ├─ build Message(id, timestamp, source_node, topic, payload)
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>     ├─ append to topic retention buffer
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>     ├─ fan-out to each subscriber queue
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>     │    ├─ if queue full → apply backpressure_policy
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>     │    └─ emit BackpressureEvent to /system/backpressure
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>     └─ check _pending_requests for correlation_id matches
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>          └─ resolve request/reply futures
+</code></pre></div>
+<p>Inside <code>spin()</code>, each node has an independent <code>asyncio.Task</code> (<code>_node_loop</code>) that:</p>
+<ol>
+<li>Reads from its queue</li>
+<li>Acquires the node's semaphore (respects <code>concurrency_mode</code>)</li>
+<li>Calls <code>on_message(msg)</code></li>
+<li>Handles exceptions, updates circuit breaker</li>
+<li>Increments <code>processed</code> counter; checks termination conditions</li>
+</ol>
+<hr />
+<h2 id="the-requestreply-pattern">The request/reply pattern<a class="headerlink" href="#the-requestreply-pattern" title="Permanent link">&para;</a></h2>
+<p><code>BusHandle.request()</code> provides RPC-over-bus semantics:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># In PlannerNode:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">reply</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">request</span><span class="p">(</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="s2">&quot;/tools/request&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">ToolRequest</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;calculate&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;expression&quot;</span><span class="p">:</span> <span class="s2">&quot;2**32&quot;</span><span class="p">}),</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">reply_on</span><span class="o">=</span><span class="s2">&quot;/tools/result&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>Under the hood:
+1. A UUID <code>correlation_id</code> is generated and stored in <code>_pending_requests</code>
+2. The message is published with that <code>correlation_id</code>
+3. The caller <code>await</code>s a <code>Future</code>
+4. When any message arrives on <code>/tools/result</code> with the matching <code>correlation_id</code>,
+   the bus resolves the future
+5. On timeout, <code>RequestTimeoutError</code> is raised and the future is cancelled</p>
+<p>The responding node must echo the correlation_id back:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># In ToolExecutorNode:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="s2">&quot;/tools/result&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">ToolResult</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">correlation_id</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">correlation_id</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="wildcard-subscriptions">Wildcard subscriptions<a class="headerlink" href="#wildcard-subscriptions" title="Permanent link">&para;</a></h2>
+<p>Topic patterns in <code>subscriptions</code> support two wildcards:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>*</code></td>
+<td>Exactly one path segment</td>
+</tr>
+<tr>
+<td><code>**</code></td>
+<td>Zero or more path segments</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">subscriptions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/system/*&quot;</span><span class="p">]</span>   <span class="c1"># matches /system/lifecycle, /system/heartbeat</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>                                 <span class="c1"># does NOT match /system/foo/bar</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">subscriptions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/tools/**&quot;</span><span class="p">]</span>   <span class="c1"># matches /tools/request, /tools/result,</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>                                 <span class="c1"># /tools/calc/result</span>
+</code></pre></div></p>
+<p>Wildcards can appear at any position: <code>/*/request</code>, <code>/**/events</code>.</p>
+<hr />
+<h2 id="concurrency-model">Concurrency model<a class="headerlink" href="#concurrency-model" title="Permanent link">&para;</a></h2>
+<p><code>concurrency_mode = "parallel"</code> (default): the node's semaphore allows up to
+<code>concurrency</code> (default: 1) concurrent <code>on_message</code> calls. Parallel nodes can
+process multiple messages simultaneously if <code>concurrency &gt; 1</code>.</p>
+<p><code>concurrency_mode = "serial"</code>: always uses <code>Semaphore(1)</code> regardless of
+<code>node.concurrency</code>. Use this for nodes that mutate state (session, filesystem,
+database).</p>
+<p>The Harness loop is stateful, so <code>PlannerNode</code> should always be <code>serial</code>.</p>
+<hr />
+<h2 id="multi-agent-orchestration-swarm">Multi-agent orchestration (swarm)<a class="headerlink" href="#multi-agent-orchestration-swarm" title="Permanent link">&para;</a></h2>
+<p>The <code>agentbus.swarm</code> module adds <strong>hub-and-spoke</strong> multi-agent coordination
+on top of the pub/sub primitives. A coordinator LLM exposes a
+<code>dispatch_subagent</code> tool whose JSON schema inlines an enum of available
+sub-agent names plus a description of each one, so the model picks a target
+in a single round-trip. Sub-agents never talk to each other — every handoff
+goes through the coordinator. This matches claude-code's <code>Task</code> tool model.</p>
+<p>Shape of a sub-agent:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">SubAgentSpec</span><span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;researcher&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Reads files and runs shell commands to gather info.&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">system_prompt</span><span class="o">=</span><span class="s2">&quot;You are a meticulous researcher. ...&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bash&quot;</span><span class="p">,</span> <span class="s2">&quot;file_read&quot;</span><span class="p">],</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># optional override</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>register_swarm(bus, specs, config)</code> registers a namespaced topic pair per
+spec (<code>/swarm/&lt;name&gt;/inbound</code> + <code>/swarm/&lt;name&gt;/outbound</code>), instantiates one
+<code>SwarmAgentNode</code> per spec, and a single <code>SwarmCoordinatorNode</code> that owns
+the dispatch tool. It returns the dispatch <code>ToolSchema</code> the caller passes
+to its coordinator planner as <code>extra_tools=[...]</code>.</p>
+<p>Two invariants keep the pattern composable:
+- <strong>Correlation-ID preservation.</strong> <code>SwarmAgentNode.on_message</code> publishes
+  its <code>OutboundChat</code> reply with <code>correlation_id=msg.correlation_id</code> — that
+  echo is what unblocks the coordinator's <code>bus.request(...)</code> future.
+- <strong>Silent drop on <code>/tools/request</code>.</strong> <code>SwarmCoordinatorNode</code> shares the
+  <code>/tools/request</code> topic with <code>ChatToolNode</code>, <code>MCPGatewayNode</code>, and
+  <code>MemoryNode</code>; each node ignores tools it doesn't own. Validation
+  failures (unknown agent, empty task) surface as <code>ToolResult.error</code>, so
+  the coordinator LLM sees them as tool failures and can recover.</p>
+<p>Each dispatch builds a fresh <code>Session</code> + <code>Harness</code> — sub-agents are
+stateless across calls. Peer-to-peer messaging, persistent per-agent
+sessions, streaming responses, and nested swarms are deferred on purpose.</p>
+<hr />
+<h2 id="multi-channel-gateways">Multi-channel gateways<a class="headerlink" href="#multi-channel-gateways" title="Permanent link">&para;</a></h2>
+<p><code>agentbus.channels</code> ports a trimmed plugin-per-channel pattern from
+<a href="https://github.com/openclaw/openclaw">openclaw</a>. Two channel subpackages
+ship in-tree — <code>channels/slack</code> (Socket Mode via <code>slack-bolt</code>) and
+<code>channels/telegram</code> (raw <code>httpx</code> long-poll) — each is a <code>ChannelPlugin</code>
+with its own <code>ConfigModel</code>, <code>setup_wizard</code>, and <code>create_gateway</code>.</p>
+<p>Routing is schema-driven:
+- <code>InboundChat.channel</code> is stamped by the gateway.
+- The planner echoes <code>channel</code> (and metadata) into each <code>OutboundChat</code>.
+- <code>GatewayNode._send_external</code> filters outbound by the gateway's
+  <code>channel_name</code> class attr, so Slack and Telegram gateways coexist on
+  one bus without either one trying to answer the other's messages.</p>
+<p>Per-channel threading context round-trips through the <code>metadata</code> dict —
+Slack stores <code>slack_channel</code>, <code>thread_ts</code>, <code>ts</code>; Telegram stores
+<code>chat_id</code>, <code>message_id</code>. Every gateway publishes <code>ChannelStatus</code> updates
+on <code>/system/channels</code> (<code>starting | connected | reconnecting | error |
+stopped</code>), and each listener loop is guarded by a <code>CircuitBreaker</code> with
+<code>MAX_CONSECUTIVE_GATEWAY_FAILURES = 5</code>. Allowlists (<code>allowed_channels</code>,
+<code>allowed_senders</code>, <code>allowed_chats</code>) filter messages before they reach the
+bus — the mandatory security floor.</p>
+<p>Integration is through <code>launch</code> / <code>daemon</code> (not <code>chat</code>): <code>channels:</code> in
+<code>agentbus.yaml</code> registers surviving gateways as nodes before <code>spin()</code>.</p>
+<hr />
+<h2 id="circuit-breakers">Circuit breakers<a class="headerlink" href="#circuit-breakers" title="Permanent link">&para;</a></h2>
+<p>Every retry loop is guarded by a <code>CircuitBreaker</code>. When consecutive failures
+exceed the threshold, the breaker opens and further calls are rejected without
+attempting the operation.</p>
+<table>
+<thead>
+<tr>
+<th>Location</th>
+<th>Breaker name</th>
+<th>Max failures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-node error handling</td>
+<td><code>node:{name}</code></td>
+<td>10</td>
+</tr>
+<tr>
+<td>AutoCompact</td>
+<td><code>autocompact</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td>Tool execution</td>
+<td><code>tool_executor</code></td>
+<td>5</td>
+</tr>
+<tr>
+<td>Provider calls</td>
+<td><code>provider</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td>Channel gateway loops</td>
+<td><code>channel:{name}</code></td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<p>When a node's breaker opens, its state transitions to <code>NodeState.ERROR</code> and its
+<code>_node_loop</code> exits. The node stops receiving messages.</p>
+<hr />
+<h2 id="key-invariants">Key invariants<a class="headerlink" href="#key-invariants" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>source_node</code> on a <code>Message</code> is always set by the bus, never by the node.</li>
+<li>Publishing to a topic not in <code>publications</code> raises <code>UndeclaredPublicationError</code>.</li>
+<li>Publishing a wrong-type payload raises <code>TopicSchemaError</code>.</li>
+<li><code>on_message</code> exceptions never crash the node — they are caught, logged, and
+  published to <code>/system/lifecycle</code>.</li>
+<li>The harness has zero imports from the bus layer.</li>
+<li><code>Session.fork()</code> never mutates the parent session.</li>
+<li><code>spin_once()</code> is the primary testing primitive — it works without a running
+  <code>spin()</code> loop.</li>
+<li>Swarm sub-agents echo the inbound <code>correlation_id</code> on their
+  <code>/swarm/&lt;name&gt;/outbound</code> reply — without it, the coordinator's
+  <code>bus.request</code> future hangs until timeout.</li>
+<li>Multi-channel gateways filter outbound traffic by <code>OutboundChat.channel</code>
+  against the gateway's <code>channel_name</code> class attr; <code>None</code> is accepted by
+  every gateway for legacy single-channel compatibility.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
