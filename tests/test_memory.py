@@ -85,9 +85,7 @@ class TestMemoryStore:
         try:
             store.add(session_id="s", user_text="cats", assistant_text="x", embedding=[1.0, 0.0])
             store.add(session_id="s", user_text="dogs", assistant_text="y", embedding=[0.0, 1.0])
-            store.add(
-                session_id="s", user_text="cat-ish", assistant_text="z", embedding=[0.9, 0.1]
-            )
+            store.add(session_id="s", user_text="cat-ish", assistant_text="z", embedding=[0.9, 0.1])
 
             results = store.search([1.0, 0.0], k=2)
             assert len(results) == 2
@@ -333,7 +331,10 @@ class TestMemoryNodeSearch:
 
         runtime = _make_runtime(tmp_path)
         runtime.store.add(
-            session_id="s", user_text="dogs are great", assistant_text="yes", embedding=[14.0, 100.0, 0.0]
+            session_id="s",
+            user_text="dogs are great",
+            assistant_text="yes",
+            embedding=[14.0, 100.0, 0.0],
         )
         runtime.store.add(
             session_id="s", user_text="cats rule", assistant_text="mew", embedding=[9.0, 99.0, 0.0]
@@ -401,9 +402,7 @@ class TestMemoryNodeSearch:
                     captured.append(msg)
 
             bus.register_node(Collector())
-            bus.publish(
-                "/tools/request", ToolRequest(tool="bash", params={"command": "ls"})
-            )
+            bus.publish("/tools/request", ToolRequest(tool="bash", params={"command": "ls"}))
             await bus.spin(timeout=0.3)
             assert captured == []
         finally:

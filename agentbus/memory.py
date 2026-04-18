@@ -212,9 +212,7 @@ class MemoryStore:
             for r in rows
         ]
 
-    def search(
-        self, query_embedding: list[float], *, k: int = 5
-    ) -> list[tuple[TurnRecord, float]]:
+    def search(self, query_embedding: list[float], *, k: int = 5) -> list[tuple[TurnRecord, float]]:
         """Return top-k (turn, cosine) pairs, highest-similarity first."""
         turns = self.all_turns()
         scored = [(t, _cosine(query_embedding, t.embedding)) for t in turns]
@@ -404,9 +402,7 @@ class MemoryNode(Node):
         results = self._runtime.store.search(vectors[0], k=k)
         await self._publish_result(msg, output=format_search_results(results), error=None)
 
-    async def _publish_result(
-        self, msg: Message, *, output: str | None, error: str | None
-    ) -> None:
+    async def _publish_result(self, msg: Message, *, output: str | None, error: str | None) -> None:
         await self._bus.publish(
             "/tools/result",
             BusToolResult(tool_call_id=msg.id, output=output, error=error),

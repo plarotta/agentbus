@@ -30,9 +30,7 @@ class TelegramPlugin(ChannelPlugin[TelegramConfig]):
         print("Telegram channel setup.")
         print("  Bot token: obtain via @BotFather → /newbot\n")
         bot_token = input(f"Bot token [{_mask(existing.get('bot_token'))}]: ").strip()
-        allowed_raw = input(
-            "Allowed chat IDs (comma-separated, blank = allow all): "
-        ).strip()
+        allowed_raw = input("Allowed chat IDs (comma-separated, blank = allow all): ").strip()
         allowed = (
             [int(x.strip()) for x in allowed_raw.split(",") if x.strip()]
             if allowed_raw

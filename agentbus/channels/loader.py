@@ -122,15 +122,11 @@ def load_channels_from_dict(
         plugin_cls = _REGISTRY.get(name)
         if plugin_cls is None:
             known = ", ".join(sorted(_REGISTRY)) or "(none registered)"
-            raise ChannelRuntimeError(
-                f"Unknown channel plugin {name!r}. Known plugins: {known}"
-            )
+            raise ChannelRuntimeError(f"Unknown channel plugin {name!r}. Known plugins: {known}")
         try:
             validated = plugin_cls.ConfigModel(**block_dict)
         except ValidationError as exc:
-            raise ChannelRuntimeError(
-                f"Invalid config for channel {name!r}: {exc}"
-            ) from exc
+            raise ChannelRuntimeError(f"Invalid config for channel {name!r}: {exc}") from exc
         out.append((plugin_cls, validated))
     return out
 

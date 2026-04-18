@@ -82,9 +82,7 @@ class TelegramGatewayNode(GatewayNode):
         return f"{self._config.api_base.rstrip('/')}/bot{self._config.bot_token}"
 
     async def _listen_external(self) -> None:
-        breaker = CircuitBreaker(
-            "telegram-gateway", max_failures=MAX_CONSECUTIVE_GATEWAY_FAILURES
-        )
+        breaker = CircuitBreaker("telegram-gateway", max_failures=MAX_CONSECUTIVE_GATEWAY_FAILURES)
         await self.publish_channel_status("connected")
         while True:
             try:

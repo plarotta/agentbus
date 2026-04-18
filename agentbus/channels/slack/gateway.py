@@ -49,8 +49,7 @@ def _require_slack_sdk() -> tuple[Any, Any]:
         from slack_bolt.async_app import AsyncApp
     except ImportError as exc:  # pragma: no cover - import-error path
         raise ChannelRuntimeError(
-            "Slack channel requires 'slack-bolt' — install with: "
-            "uv sync --extra slack"
+            "Slack channel requires 'slack-bolt' — install with: uv sync --extra slack"
         ) from exc
     return AsyncApp, AsyncSocketModeHandler
 
@@ -119,9 +118,7 @@ class SlackGatewayNode(GatewayNode):
                 await self._handler.start_async()
                 # start_async returns only on clean disconnect; treat as transient.
                 breaker.record_success()
-                await self.publish_channel_status(
-                    "reconnecting", detail="socket disconnected"
-                )
+                await self.publish_channel_status("reconnecting", detail="socket disconnected")
             except asyncio.CancelledError:
                 await self.publish_channel_status("stopped")
                 raise

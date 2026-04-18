@@ -17,13 +17,13 @@ repos:
         args: ["--fix"]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+  - repo: local
     hooks:
       - id: mypy
-        additional_dependencies:
-          - pydantic>=2.0
-        args: ["--config-file=pyproject.toml"]
+        name: mypy (uv)
+        entry: uv run mypy agentbus
+        language: system
+        types: [python]
         pass_filenames: false
         files: ^agentbus/
 

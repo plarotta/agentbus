@@ -261,10 +261,7 @@ class SwarmCoordinatorNode(Node):
         if not isinstance(agent_name, str) or agent_name not in self._specs:
             await self._reply(
                 msg,
-                error=(
-                    f"unknown sub-agent {agent_name!r}; "
-                    f"available: {sorted(self._specs)}"
-                ),
+                error=(f"unknown sub-agent {agent_name!r}; available: {sorted(self._specs)}"),
             )
             return
         if not isinstance(task, str) or not task.strip():

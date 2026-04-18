@@ -409,9 +409,7 @@ class TestTelegramInbound:
             _FakeResponse(
                 data={
                     "ok": True,
-                    "result": [
-                        {"update_id": 10, "message": {"text": "hi", "chat": {"id": 1}}}
-                    ],
+                    "result": [{"update_id": 10, "message": {"text": "hi", "chat": {"id": 1}}}],
                 }
             )
         )
@@ -447,9 +445,7 @@ class TestTelegramInbound:
     async def test_dispatch_respects_allowlist(self, tg_gateway):
         node, _client, bus = tg_gateway
         node._config.allowed_chats = [111]
-        await node._dispatch_update(
-            {"update_id": 1, "message": {"text": "x", "chat": {"id": 222}}}
-        )
+        await node._dispatch_update({"update_id": 1, "message": {"text": "x", "chat": {"id": 222}}})
         bus.publish.assert_not_awaited()
 
     async def test_dispatch_skips_non_message(self, tg_gateway):
@@ -459,9 +455,7 @@ class TestTelegramInbound:
 
     async def test_dispatch_skips_empty_text(self, tg_gateway):
         node, _client, bus = tg_gateway
-        await node._dispatch_update(
-            {"update_id": 1, "message": {"chat": {"id": 1}}}
-        )
+        await node._dispatch_update({"update_id": 1, "message": {"chat": {"id": 1}}})
         bus.publish.assert_not_awaited()
 
 
