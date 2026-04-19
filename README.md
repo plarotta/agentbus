@@ -1,8 +1,16 @@
-# AgentBus
+<p align="center">
+    <img src="assets/banner.png" alt="AgentBus" width="500">
+</p>
 
-![AgentBus](assets/banner.png)
+<p align="center">
+  <strong>A typed, observable message bus for building and debugging multi-agent LLM systems.</strong>
+</p>
 
-**AgentBus is a typed, observable message bus for building and debugging multi-agent LLM systems.**
+<p align="center">
+  <a href="https://github.com/plarotta/agentbus/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/plarotta/agentbus/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
+  <a href="https://github.com/plarotta/agentbus/releases"><img src="https://img.shields.io/github/v/release/plarotta/agentbus?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
+</p>
 
 Not another agent framework. It is the infrastructure layer that makes multi-agent systems inspectable, decoupled, and composable — locally first, on a single machine, with zero cloud dependency.
 
