@@ -6,6 +6,27 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Sandboxed `bash` and `code_exec` tools.** New `agentbus.chat._sandbox`
+  module ships two backends:
+  - `SubprocessSandbox` (default) — runs each command in a child process
+    with `RLIMIT_CPU` / `RLIMIT_AS` applied via `preexec_fn`, a scrubbed
+    environment (allowlist: `PATH`, `HOME`, `LANG`, `LC_ALL`, `TERM`),
+    and a per-invocation tempdir as `cwd`. On timeout, the entire process
+    group is killed via `os.killpg`. Output is truncated at
+    `max_output_bytes` (default 256 KiB) so a runaway process can't blow
+    the LLM's context window.
+  - `DockerSandbox` (opt-in) — shells out to `docker run --rm --read-only
+    --memory --cpus --network=none` (unless `network: true`) with a
+    single writable `/workspace` bind mount. No dependency on `docker-py`.
+  Sandbox is **on by default** — an `agentbus.yaml` without a `sandbox:`
+  block still gets conservative limits. The `sandbox:` block supports
+  `backend`, `cpu_seconds`, `memory_mb`, `max_output_bytes`, `workdir`,
+  `env_passthrough`, `image`, and `network`. Permission policy is
+  evaluated *above* the sandbox, so a denied command short-circuits
+  before the child process is even spawned. 20 new tests in
+  `tests/test_sandbox.py`.
+
 ## [0.2.0] - 2026-04-18
 
 ### Added (Tier 1 — finishing touches)

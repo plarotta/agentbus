@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from agentbus.chat._permissions import PermissionPolicy, load_policy_from_dict
+from agentbus.chat._sandbox import SandboxConfig, load_sandbox_from_dict
 from agentbus.mcp import MCPServerConfig, load_servers_from_dict
 from agentbus.memory import load_memory_config_from_dict
 
@@ -29,6 +30,7 @@ class ChatConfig:
     memory: bool = False
     memory_settings: dict[str, Any] = field(default_factory=lambda: {"enabled": False})
     permissions: PermissionPolicy = field(default_factory=PermissionPolicy)
+    sandbox: SandboxConfig = field(default_factory=SandboxConfig)
     mcp_servers: list[MCPServerConfig] = field(default_factory=list)
 
     def save(self, path: Path = DEFAULT_CONFIG_PATH) -> None:
@@ -60,6 +62,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> ChatConfig:
         memory=bool(memory_settings.get("enabled", False)),
         memory_settings=memory_settings,
         permissions=load_policy_from_dict(data.get("permissions")),
+        sandbox=load_sandbox_from_dict(data.get("sandbox")),
         mcp_servers=load_servers_from_dict(data.get("mcp_servers")),
     )
 

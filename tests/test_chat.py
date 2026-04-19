@@ -5,6 +5,7 @@ from __future__ import annotations
 from agentbus.chat._commands import handle_command
 from agentbus.chat._config import ChatConfig, load_config
 from agentbus.chat._runner import ChatSession
+from agentbus.chat._sandbox import SandboxConfig, SubprocessSandbox
 from agentbus.chat._tools import (
     TOOL_SCHEMAS,
     ChatToolNode,
@@ -16,6 +17,8 @@ from agentbus.chat._tools import (
 from agentbus.harness.providers import Chunk, ToolSchema
 from agentbus.schemas.common import InboundChat, OutboundChat
 from agentbus.schemas.harness import PlannerStatus
+
+_SANDBOX = SubprocessSandbox(SandboxConfig())
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -70,16 +73,16 @@ class TestChatConfig:
 
 class TestToolHandlers:
     async def test_bash_echo(self):
-        result = await _run_bash({"command": "echo hello"})
+        result = await _run_bash({"command": "echo hello"}, _SANDBOX)
         assert result == "hello"
 
     async def test_bash_stderr(self):
-        result = await _run_bash({"command": "echo out; echo err >&2"})
+        result = await _run_bash({"command": "echo out; echo err >&2"}, _SANDBOX)
         assert "out" in result
         assert "err" in result
 
     async def test_bash_timeout(self):
-        result = await _run_bash({"command": "sleep 10", "timeout": 0.1})
+        result = await _run_bash({"command": "sleep 10", "timeout": 0.1}, _SANDBOX)
         assert "timed out" in result
 
     async def test_file_write_and_read(self, tmp_path):
@@ -94,7 +97,7 @@ class TestToolHandlers:
         assert "Error" in result
 
     async def test_code_exec(self):
-        result = await _run_code_exec({"code": "print(2 + 2)"})
+        result = await _run_code_exec({"code": "print(2 + 2)"}, _SANDBOX)
         assert result == "4"
 
     def test_tool_schemas_present(self):

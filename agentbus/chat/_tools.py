@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
 from agentbus.chat._permissions import PermissionPolicy
+from agentbus.chat._sandbox import Sandbox, SandboxConfig, build_sandbox
 from agentbus.harness.providers import ToolSchema
 from agentbus.message import Message
 from agentbus.node import Node
@@ -96,25 +96,14 @@ TOOL_SCHEMAS: dict[str, ToolSchema] = {
 # ---------------------------------------------------------------------------
 
 
-async def _run_bash(params: dict[str, Any]) -> str:
+async def _run_bash(params: dict[str, Any], sandbox: Sandbox) -> str:
     command = params.get("command", "")
     timeout = float(params.get("timeout", 30.0))
     try:
-        proc = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        output = stdout.decode(errors="replace")
-        err_text = stderr.decode(errors="replace").strip()
-        if err_text:
-            output = output + f"\n[stderr]\n{err_text}"
-        return output.strip() or "(no output)"
-    except TimeoutError:
-        return f"Error: command timed out after {timeout}s"
+        result = await sandbox.run_shell(command, timeout=timeout)
     except Exception as exc:
         return f"Error: {exc}"
+    return result.to_tool_output()
 
 
 async def _run_file_read(params: dict[str, Any]) -> str:
@@ -143,26 +132,13 @@ async def _run_file_write(params: dict[str, Any]) -> str:
         return f"Error writing {path_str}: {exc}"
 
 
-async def _run_code_exec(params: dict[str, Any]) -> str:
+async def _run_code_exec(params: dict[str, Any], sandbox: Sandbox) -> str:
     code = params.get("code", "")
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "python3",
-            "-c",
-            code,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
-        output = stdout.decode(errors="replace")
-        err_text = stderr.decode(errors="replace").strip()
-        if err_text:
-            output = output + f"\n[stderr]\n{err_text}"
-        return output.strip() or "(no output)"
-    except TimeoutError:
-        return "Error: code execution timed out after 30s"
+        result = await sandbox.run_python(code, timeout=30.0)
     except Exception as exc:
         return f"Error: {exc}"
+    return result.to_tool_output()
 
 
 TOOL_HANDLERS: dict[str, Any] = {
@@ -171,6 +147,8 @@ TOOL_HANDLERS: dict[str, Any] = {
     "file_write": _run_file_write,
     "code_exec": _run_code_exec,
 }
+
+_SANDBOXED_TOOLS: frozenset[str] = frozenset({"bash", "code_exec"})
 
 
 # ---------------------------------------------------------------------------
@@ -196,10 +174,15 @@ class ChatToolNode(Node):
         *,
         permissions: PermissionPolicy | None = None,
         approval_callback: ApprovalCallback | None = None,
+        sandbox: Sandbox | None = None,
     ) -> None:
         self._enabled = set(enabled_tools)
         self._permissions = permissions or PermissionPolicy()
         self._approval_callback = approval_callback
+        # Fall back to a default SubprocessSandbox so bare instantiation
+        # (tests, embedders that don't load ChatConfig) still gets the
+        # sandboxed handlers instead of unbounded subprocess access.
+        self._sandbox = sandbox if sandbox is not None else build_sandbox(SandboxConfig())
         self._bus = None
 
     async def on_init(self, bus) -> None:
@@ -241,7 +224,11 @@ class ChatToolNode(Node):
 
     async def _run(self, tool: str, params: dict[str, Any]) -> tuple[str | None, str | None]:
         try:
-            result = await TOOL_HANDLERS[tool](params)
+            handler = TOOL_HANDLERS[tool]
+            if tool in _SANDBOXED_TOOLS:
+                result = await handler(params, self._sandbox)
+            else:
+                result = await handler(params)
             return result, None
         except Exception as exc:
             return None, str(exc)

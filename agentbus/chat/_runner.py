@@ -15,6 +15,7 @@ from agentbus.bus import MessageBus
 from agentbus.chat._commands import CommandResult, handle_command
 from agentbus.chat._config import ChatConfig
 from agentbus.chat._planner import ChatPlannerNode
+from agentbus.chat._sandbox import build_sandbox
 from agentbus.chat._tools import ChatToolNode
 from agentbus.harness.session import Session
 from agentbus.mcp import MCPGatewayNode, MCPRuntime, open_mcp_runtime
@@ -185,6 +186,7 @@ class ChatSession:
                     self._config.tools,
                     permissions=self._config.permissions,
                     approval_callback=self._make_approval_callback(),
+                    sandbox=build_sandbox(self._config.sandbox),
                 )
             )
 

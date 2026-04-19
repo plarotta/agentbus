@@ -122,6 +122,23 @@ channels:
     allowed_chats: [12345]          # int chat IDs
     long_poll_timeout_s: 25
 
+# ── Tool sandbox (applies to `bash` and `code_exec`) ───────────
+# Sandbox is on by default — omitting this block still gets subprocess
+# isolation with conservative limits (CPU=30s, memory=512 MiB, output
+# capped at 256 KiB, scrubbed env, per-invocation tempdir as cwd).
+# Permission policy is evaluated *above* the sandbox — a denied command
+# never reaches the child process. Docker backend requires the `docker`
+# binary on PATH and enables network isolation + a read-only rootfs.
+sandbox:
+  backend: subprocess                # "subprocess" (default) | "docker"
+  cpu_seconds: 30                    # RLIMIT_CPU cap in the child
+  memory_mb: 512                     # RLIMIT_AS cap (best-effort on macOS)
+  max_output_bytes: 262144           # 256 KiB; stdout above this is truncated
+  workdir: null                      # null = per-invocation tempdir
+  env_passthrough: []                # extra env vars to let through the scrub
+  image: python:3.12-slim            # docker-only
+  network: false                     # docker-only; `false` adds --network=none
+
 # ── Tool permission policy ─────────────────────────────────────
 # Per-tool gate applied by ChatToolNode before handler dispatch. Deny
 # rules short-circuit before approval prompts. File-path rules resolve
