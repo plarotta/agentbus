@@ -207,6 +207,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_parser.add_argument("--config", default="agentbus.yaml", help="Path to agentbus.yaml")
 
+    # ── setup ────────────────────────────────────────────────────────────────
+    setup_parser = subparsers.add_parser(
+        "setup",
+        help="Interactive setup wizard — provider, tools, memory, channels",
+    )
+    setup_parser.add_argument(
+        "--config",
+        default="agentbus.yaml",
+        help="Path to agentbus.yaml to create or update (default: ./agentbus.yaml)",
+    )
+    setup_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite existing config without prompting",
+    )
+    setup_parser.add_argument(
+        "--skip-doctor",
+        action="store_true",
+        default=False,
+        help="Skip the post-setup doctor probe",
+    )
+
     # ── channels ─────────────────────────────────────────────────────────────
     channels_parser = subparsers.add_parser(
         "channels",
@@ -333,6 +356,14 @@ def app(argv: list[str] | None = None) -> int:
         from agentbus.doctor import run as _run_doctor
 
         return _run_doctor(config_path=args.config, socket_path=args.socket_path)
+    if args.command == "setup":
+        from agentbus.setup import run_setup
+
+        return run_setup(
+            config_path=args.config,
+            force=args.force,
+            run_doctor=not args.skip_doctor,
+        )
     if args.command == "daemon":
         return _run_daemon(args)
     if args.command == "channels":

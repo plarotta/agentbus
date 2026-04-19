@@ -331,7 +331,9 @@ sessions, streaming responses, and nested swarms are deferred on purpose.
 [openclaw](https://github.com/openclaw/openclaw). Two channel subpackages
 ship in-tree — `channels/slack` (Socket Mode via `slack-bolt`) and
 `channels/telegram` (raw `httpx` long-poll) — each is a `ChannelPlugin`
-with its own `ConfigModel`, `setup_wizard`, and `create_gateway`.
+with its own `ConfigModel`, `setup_wizard`, `interactive_setup`
+(themed hook used by `agentbus setup`; defaults to delegating to
+`setup_wizard`), and `create_gateway`.
 
 Routing is schema-driven:
 - `InboundChat.channel` is stamped by the gateway.

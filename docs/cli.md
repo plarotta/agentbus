@@ -27,8 +27,8 @@ entry. `AGENTBUS_LOG_LEVEL`, `AGENTBUS_LOG_FORMAT`, and `AGENTBUS_LOG_FILE`
 environment variables work too.
 
 The `topic`, `node`, and `graph` commands require a running bus with a
-matching `socket_path`. `chat`, `launch`, `daemon`, `doctor`, `channels`, and
-`--version` are self-contained.
+matching `socket_path`. `chat`, `setup`, `launch`, `daemon`, `doctor`,
+`channels`, and `--version` are self-contained.
 
 ---
 
@@ -272,6 +272,49 @@ agentbus doctor
 
 ---
 
+## setup
+
+Full-config interactive wizard. Writes an `agentbus.yaml` from a linear
+questionary-backed flow (banner → provider → tools → memory → channels →
+doctor probe). Requires the `tui` extra (`uv sync --extra tui`).
+
+```bash
+agentbus setup [--config PATH] [--force] [--skip-doctor]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--config PATH` | Target config file. Default: `./agentbus.yaml`. |
+| `--force` | Skip the edit/overwrite/cancel prompt and always overwrite. |
+| `--skip-doctor` | Skip the post-write `agentbus doctor` probe. |
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | Config written successfully (doctor warnings do not fail). |
+| `1` | User cancelled — Ctrl-C, declined overwrite, or chose "cancel". |
+| `2` | Validation error (channel sub-flow failed, `questionary` not installed). |
+
+**What the wizard does:**
+
+1. Prints the shared block-art AgentBus banner.
+2. Detects existing config; offers *edit* (fill defaults from existing
+   values), *overwrite* (start blank), or *cancel*.
+3. Picks provider + model (pre-filled for the chosen provider).
+4. Selects built-in tools (`bash`, `file_read`, `file_write`, `code_exec`).
+5. Toggles memory.
+6. Loops through channel plugins (Slack, Telegram) — each plugin owns its
+   own sub-flow via `ChannelPlugin.interactive_setup(prompter, existing)`.
+7. Atomically writes the config, preserving the previous version at
+   `agentbus.yaml.bak`.
+8. Runs the doctor probe against the new file and prints themed results.
+
+The wizard and `agentbus chat` share a single visual language — same
+banner, cyan accent, muted `·` separators, `✗` error glyph.
+
+---
+
 ## channels
 
 Multi-channel gateway plugin management. See [Launch Reference](launch.md)
@@ -279,12 +322,14 @@ for the `channels:` config shape.
 
 ```bash
 agentbus channels list                 # registered channel plugins
-agentbus channels setup slack          # interactive setup wizard
+agentbus channels setup slack          # legacy per-channel wizard
 agentbus channels setup telegram
 ```
 
-`setup` dispatches to the plugin's `setup_wizard` and writes the resulting
-config back to `channels.<name>` in `agentbus.yaml`.
+For a full themed configuration experience — provider, tools, memory, and
+every channel in one flow — prefer `agentbus setup`. `channels setup
+<name>` remains for per-channel reconfigure; it writes back to
+`channels.<name>` in `agentbus.yaml`.
 
 ---
 

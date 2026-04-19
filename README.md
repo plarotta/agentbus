@@ -1,137 +1,112 @@
 # AgentBus
 
-A ROS-inspired typed message bus for agentic LLM orchestration. Local-first. asyncio-native. Introspection-first.
+![AgentBus](assets/banner.png)
 
-## The problem
+**AgentBus is a typed, observable message bus for building and debugging multi-agent LLM systems.**
 
-Most agent frameworks are monolithic loops: the orchestrator calls a tool, gets a result, feeds it back, repeats. This works until you need more than one agent, until you want to observe what's happening, or until you need to route messages between components without hardwiring every dependency.
+Not another agent framework. It is the infrastructure layer that makes multi-agent systems inspectable, decoupled, and composable — locally first, on a single machine, with zero cloud dependency.
 
-AgentBus separates concerns the way ROS does for robotics: agents communicate through **typed topics**, not direct function calls. The bus owns routing. The harness owns the LLM loop. Neither knows the other's internals.
+---
 
-## Core abstractions
+## Why AgentBus?
 
-| Abstraction | Role |
-|-------------|------|
-| `Message[T]` | Frozen envelope set by the bus (id, timestamp, source_node, topic, payload) |
-| `Topic[T]` | Typed publish/subscribe channel with retention and backpressure |
-| `Node` | Agent component with `on_init`, `on_message`, `on_shutdown` lifecycle hooks |
-| `MessageBus` | Broker — registers topics/nodes, drives the spin loop, exposes introspection |
-| `Harness` | Self-contained LLM agent loop — tool dispatch, session history, context compaction |
+Most agent systems look like this:
 
-Nodes declare what they publish and subscribe to. The bus enforces schema correctness at runtime. No node can fake another node's identity — `source_node` is always set by the bus.
+```text
+loop:
+  call tool
+  get result
+  repeat
+```
 
-## Install
+That works until you have more than one agent, or you want to see what's happening inside, or you need to swap a tool without rewiring the planner. AgentBus replaces direct function calls with **typed message passing**:
+
+```text
+PlannerNode  ──►  /tools/request  ──►  ToolExecutorNode
+                                             │
+PlannerNode  ◄──  /tools/result  ◄───────────┘
+```
+
+The consequences fall out of the design:
+
+- **Observable.** Every message is a typed envelope on a named topic. Stream them live, render the wiring graph, replay from the retention buffer.
+- **Decoupled.** The planner never imports the executor — or any other node. Swap, mock, or move a node without touching its callers.
+- **Composable.** Tools, gateways, memory, sub-agents — all the same primitive (a `Node`), all speaking the same protocol.
+- **Event-driven.** Nodes react to messages on subscribed topics, forming a reactive graph of computation. No orchestrator polling, no driver loop in your code.
+
+---
+
+## Mental model
+
+- **Nodes** = agents, tools, gateways, observers — anything that reacts to messages.
+- **Topics** = typed channels (`Topic[InboundChat]`, `Topic[ToolRequest]`, …). The bus enforces the schema.
+- **Messages** = frozen envelopes. `source_node` is set by the bus, never by the sender — so identity can't be faked.
+- **Bus** = the router + runtime. Owns dispatch, backpressure, retention, introspection.
+
+If you've used ROS or actor systems, this will feel familiar.
+
+---
+
+## Observability is a first-class feature
+
+This is the part most agent frameworks skip. With a running bus, you can introspect everything, live:
 
 ```bash
-# core
-pip install agentbus
-
-# with a specific LLM provider
-pip install "agentbus[anthropic]"
-pip install "agentbus[openai]"
-pip install "agentbus[ollama]"
-
-# with CLI tools
-pip install "agentbus[cli]"
-
-# interactive TUI for `agentbus chat` (prompt_toolkit + rich)
-pip install "agentbus[tui]"
-
-# MCP servers (registers stdio MCP tools with the planner)
-pip install "agentbus[mcp]"
-
-# multi-channel gateways
-pip install "agentbus[slack]"
-pip install "agentbus[telegram]"
-pip install "agentbus[channels]"   # slack + telegram together
-
-# everything
-pip install "agentbus[all]"
+agentbus graph --format mermaid       # render the pub/sub wiring
+agentbus topic echo /tools/request    # stream tool calls as they happen
+agentbus topic list                   # every topic, schema, subscriber count
+agentbus node list                    # every node, state, message counts
+agentbus node info planner            # detail on a single node
 ```
 
-With [uv](https://github.com/astral-sh/uv) (recommended):
+Inside a chat session, the same data is a slash command away:
 
-```bash
-uv sync --extra anthropic
+```text
+/trace <cid>   walk the causal chain for a correlation id
+/usage         token spend by role, per session
+/graph         the same mermaid diagram
 ```
 
-## Examples
+Everything the system does is a typed message on a named topic. You don't infer behavior from logs — you watch it.
 
-Four runnable examples are in `examples/`.
+---
 
-### Sensor monitoring pipeline (`examples/sensor_pipeline/`) — no API key needed
+## Tools are just nodes
 
-Multi-stage stream processing: `SensorNode → StatsNode → AlertNode → DisplayNode`. Shows typed pub/sub, stateful rolling-window computation, conditional publishing, and post-run analysis from the retention buffer.
+This is a small idea with big consequences. A "tool" in AgentBus is a node that subscribes to `/tools/request` and publishes to `/tools/result`:
 
-```bash
-uv run python examples/sensor_pipeline/main.py
+```python
+class CalculatorNode(Node):
+    name = "calculator"
+    subscriptions = ["/tools/request"]
+    publications = ["/tools/result"]
+
+    async def on_message(self, msg: Message) -> None:
+        if msg.payload.tool != "calculate":
+            return  # silently drop — another tool node will handle it
+        out = str(eval(msg.payload.params["expression"], {"__builtins__": {}}))
+        await self._bus.publish(
+            "/tools/result",
+            ToolResult(tool_call_id=msg.id, output=out),
+            correlation_id=msg.correlation_id,
+        )
 ```
 
-```
-Streaming 60 readings  (warn >=74.0  crit >=82.0)
+Because tools are nodes, they're:
 
-  stats   [####----------------]  mean= 63.0  stdev=4.41
-  [ WARN ]  sensor-A  mean=74.8
-  stats   [############--------]  mean= 79.8  stdev=2.97
-  ...
-  readings  : 60  |  temp range: 54.2 – 84.8  |  alerts: 1
-```
+- **Replaceable** — mock one out in a test by registering a different node.
+- **Distributable** — a tool node can live in another process, another host, behind a socket.
+- **Observable** — every tool call is a message you can trace, echo, and replay.
 
-### Standalone tool agent (`examples/tool_agent/`) — Anthropic key required
+The `ChatToolNode`, `MCPGatewayNode`, `MemoryNode`, and swarm `SwarmCoordinatorNode` all use this exact pattern and compose on the same topic.
 
-The simplest way to use the Harness — no bus required. The LLM gets tools, makes calls, the executor runs them locally.
-
-```bash
-uv sync --extra anthropic
-ANTHROPIC_API_KEY=sk-ant-... uv run python examples/tool_agent/main.py
-```
-
-### Full bus integration (`examples/bus_agent/`) — Anthropic key required
-
-The Harness wired into pub/sub. Tool calls route through the bus as typed messages — `PlannerNode` never imports or calls `ToolExecutorNode` directly.
-
-```bash
-uv sync --extra anthropic
-ANTHROPIC_API_KEY=sk-ant-... uv run python examples/bus_agent/main.py
-```
-
-While it runs, observe live traffic in another terminal:
-
-```bash
-agentbus topic echo /tools/request
-agentbus graph --format mermaid
-```
-
-### Writer + Critic multi-agent loop (`examples/writer_critic/`) — Anthropic key required
-
-Two LLM agents with different system prompts collaborate via the bus. `WriterNode` produces a draft, `CriticNode` reviews it, `WriterNode` revises — for N rounds. Each agent has its own `Harness` and `Session`.
-
-```bash
-uv sync --extra anthropic
-ANTHROPIC_API_KEY=sk-ant-... uv run python examples/writer_critic/main.py
-
-# optional overrides
-ROUNDS=3 TOPIC="the joy of refactoring" uv run python examples/writer_critic/main.py
-```
-
-```
-[Writer] Round 1 — writing about: why it's worth learning to type properly
-  ...draft...
-[Critic] Reviewing round 1 draft
-  ...feedback...
-[Writer] Round 2 — revising
-  ...revision...
-==============================================================
-  FINAL PIECE  (2 round(s) of revision)
-==============================================================
-  ...
-```
+---
 
 ## Bus quickstart
 
 ```python
 import asyncio
-from agentbus import MessageBus, Node, ObserverNode, Topic
+from agentbus import MessageBus, Node, Topic
 from agentbus.message import Message
 from agentbus.schemas.common import InboundChat, OutboundChat
 
@@ -140,9 +115,6 @@ class EchoNode(Node):
     name = "echo"
     subscriptions = ["/inbound"]
     publications = ["/outbound"]
-
-    def __init__(self) -> None:
-        self._bus = None
 
     async def on_init(self, bus) -> None:
         self._bus = bus
@@ -159,77 +131,46 @@ async def main() -> None:
     bus.register_topic(Topic[InboundChat]("/inbound", retention=10))
     bus.register_topic(Topic[OutboundChat]("/outbound", retention=10))
     bus.register_node(EchoNode())
-    bus.register_node(ObserverNode())  # logs all system events
 
-    async def seed_messages() -> None:
+    async def seed() -> None:
         await asyncio.sleep(0.05)
-        for text in ("hello", "agentbus", "echo"):
+        for text in ("hello", "agentbus"):
             bus.publish("/inbound", InboundChat(channel="demo", sender="user", text=text))
 
-    asyncio.create_task(seed_messages())
-    await bus.spin(until=lambda: len(bus.history("/outbound", 10)) >= 3)
+    asyncio.create_task(seed())
+    await bus.spin(until=lambda: len(bus.history("/outbound", 10)) >= 2)
 
 
 asyncio.run(main())
 ```
 
-## Harness quickstart
+That's the whole model: declare topics, register nodes, publish, spin. No framework-owned control flow.
 
-The `Harness` wraps a provider-agnostic LLM loop with session persistence and automatic context compaction. It has zero coupling to the bus layer — wire it up via a `tool_executor` callback.
+---
 
-```python
-from agentbus.harness import Harness, Session
-from agentbus.harness.providers import SystemPrompt, ToolSchema
-from agentbus.harness.providers.anthropic import AnthropicProvider
-from agentbus.schemas.harness import ToolCall, ToolResult
+## First run
 
-provider = AnthropicProvider(
-    model="claude-haiku-4-5-20251001",
-    system_prompt=SystemPrompt(static_prefix="You are a helpful assistant."),
-)
-
-async def execute_tool(call: ToolCall) -> ToolResult:
-    if call.name == "search":
-        return ToolResult(tool_call_id=call.id, output="results here")
-    return ToolResult(tool_call_id=call.id, error="unknown tool")
-
-harness = Harness(
-    provider=provider,
-    tool_executor=execute_tool,
-    tools=[ToolSchema(name="search", description="Search the web")],
-    session=Session(),
-)
-
-response = await harness.run("search for the latest news")
-```
-
-Sessions persist to `~/.agentbus/sessions/<session_id>/main.json`. Call `harness.run()` multiple times to continue the same conversation. Fork a session with `session.fork(from_turn_index)` to branch without mutating the parent.
-
-## Introspection
-
-With `socket_path` set (the default), a running bus exposes a Unix socket at `/tmp/agentbus.sock`. Use the CLI to inspect live state:
+The fastest way to a working chat session is the interactive wizard. It picks a provider + model, selects built-in tools, toggles memory, and walks each channel plugin's own sub-flow:
 
 ```bash
-agentbus topic list
-agentbus topic echo /tools/request
-agentbus node list
-agentbus node info planner
-agentbus graph --format mermaid
-agentbus channels list               # registered channel plugins
-agentbus channels setup slack        # interactive setup wizard
+uv sync --extra tui
+uv run agentbus setup        # writes ./agentbus.yaml atomically (.bak preserved)
+uv run agentbus chat         # interactive chat TUI with live tool-call streaming
 ```
 
-Or query programmatically:
+`setup` and `chat` share a single visual identity — block-art banner, cyan accent, muted `·` separators. See [`docs/cli.md`](docs/cli.md#setup) for flags and exit codes.
 
-```python
-bus.topics()   # list[TopicInfo]
-bus.nodes()    # list[NodeInfo]
-bus.graph()    # BusGraph
-bus.history("/inbound", n=10)  # list[Message]
-await bus.wait_for("/outbound", lambda m: m.payload.reply_to == "planner")
-```
+---
+
+## Local-first, distributed-ready
+
+AgentBus is local-first by default — a single `asyncio` event loop, zero cloud dependency, zero external services. But the topic abstraction is the same whether two nodes live in the same process or different ones: the optional Unix-socket introspection server at `/tmp/agentbus.sock` is the seam for multi-process wiring, remote tool execution, and cross-host observation. Distributed routing is on the roadmap, not bolted on — the message envelope already carries everything it needs.
+
+---
 
 ## Launch from config
+
+For anything beyond a single script, declare topology in YAML:
 
 ```yaml
 # agentbus.yaml
@@ -251,86 +192,75 @@ from agentbus.launch import launch_sync
 launch_sync("agentbus.yaml")
 ```
 
+Or launch from the CLI:
+
+```bash
+agentbus launch agentbus.yaml
+agentbus daemon start agentbus.yaml       # pidfile-locked foreground run
+```
+
+---
+
 ## System topics
 
-The bus auto-registers these topics — nodes never publish to them directly:
+The bus auto-registers these — nodes never publish to them directly. Subscribe to `/system/**` with `ObserverNode` to get structured logs of everything.
 
-| Topic | Payload | When |
-|-------|---------|------|
-| `/system/lifecycle` | `LifecycleEvent` | Node state transitions |
-| `/system/heartbeat` | `Heartbeat` | Every 30 seconds |
-| `/system/backpressure` | `BackpressureEvent` | Queue overflow |
-| `/system/telemetry` | `TelemetryEvent` | Harness events |
-| `/system/channels` | `ChannelStatus` | Channel gateway transitions (`starting` / `connected` / `reconnecting` / `error` / `stopped`) |
+| Topic                  | Payload             | When                                                                                          |
+| ---------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| `/system/lifecycle`    | `LifecycleEvent`    | Node state transitions                                                                        |
+| `/system/heartbeat`    | `Heartbeat`         | Every 30 seconds                                                                              |
+| `/system/backpressure` | `BackpressureEvent` | Queue overflow                                                                                |
+| `/system/telemetry`    | `TelemetryEvent`    | Harness events                                                                                |
+| `/system/channels`     | `ChannelStatus`     | Channel gateway transitions (`starting` / `connected` / `reconnecting` / `error` / `stopped`) |
 
-Subscribe to `/system/**` with `ObserverNode` to get structured logs of everything.
+---
 
 ## Integrations
 
-All of the following are optional — omit the section from `agentbus.yaml` and nothing is wired up.
+All optional — omit the section from `agentbus.yaml` and nothing is wired up. Each integration is a node (or a group of nodes) that subscribes to the same topics as everything else.
 
-### MCP servers
+- **MCP servers** — spawn [Model Context Protocol](https://modelcontextprotocol.io/) stdio servers and expose their tools under `mcp__<server>__<tool>`.
+- **Memory** — embed each chat turn into a local SQLite vector store and auto-register a `memory_search` tool. Pure-Python cosine similarity; no numpy.
+- **Channel gateways** — Slack (Socket Mode) and Telegram (long-poll) bridge external messages to `/inbound` / `/outbound`. Allowlists, self-echo filters, reconnect with backoff, and circuit breakers are built in.
+- **Swarm (hub-and-spoke)** — a coordinator LLM exposes a `dispatch_subagent` tool; each sub-agent lives on `/swarm/<name>/inbound` + `/swarm/<name>/outbound` and runs a fresh `Harness` per dispatch.
 
-Spawn [Model Context Protocol](https://modelcontextprotocol.io/) stdio servers and expose their advertised tools to the planner under namespaced names (`mcp__<server>__<tool>`):
+Config shapes live in [`docs/launch.md`](docs/launch.md); reliability details in [`docs/concepts.md`](docs/concepts.md).
 
-```yaml
-# agentbus.yaml
-mcp_servers:
-  - name: filesystem
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+---
+
+## Install
+
+With [uv](https://github.com/astral-sh/uv) (recommended):
+
+```bash
+uv sync --extra anthropic       # one provider
+uv sync --extra all             # everything: tui, mcp, channels, all providers
 ```
 
-Install with `uv sync --extra mcp`. The gateway coexists with the built-in tool node — each silently drops tools it doesn't own.
+Or with pip:
 
-### Memory node
-
-Consolidate chat turns into a local searchable store. Embeddings default to Ollama's `nomic-embed-text`, persisted to a SQLite file with a `memory_search` tool auto-registered with the planner.
-
-```yaml
-memory:
-  enabled: true
-  provider: ollama
-  model: nomic-embed-text
-  base_url: http://localhost:11434
-  db_path: ~/.agentbus/memory.db
+```bash
+pip install "agentbus[anthropic]"
+pip install "agentbus[all]"
 ```
 
-Pure-Python cosine similarity — no numpy, no vector-store dependency.
+Full extras list: `anthropic`, `openai`, `ollama`, `cli`, `tui`, `mcp`, `slack`, `telegram`, `channels`, `all`.
 
-### Multi-channel gateways
-
-Bridge `agentbus chat` to external chat platforms. Each gateway is a `GatewayNode` that publishes to `/inbound` and subscribes to `/outbound`; `OutboundChat.channel` and `channel_name` on the gateway keep multiple channels from stepping on each other. Every gateway also publishes `ChannelStatus` updates to `/system/channels` and is guarded by a 5-failure circuit breaker.
-
-```yaml
-channels:
-  slack:
-    enabled: true
-    app_token: ${SLACK_APP_TOKEN}   # xapp-... (Socket Mode)
-    bot_token: ${SLACK_BOT_TOKEN}   # xoxb-...
-    allowed_channels: ["C01234"]
-    allowed_senders: ["U01234"]
-  telegram:
-    enabled: true
-    bot_token: ${TELEGRAM_BOT_TOKEN}
-    allowed_chats: [12345]
-```
-
-Install with `uv sync --extra slack` / `--extra telegram` / `--extra channels`. Use `agentbus channels setup <name>` to run an interactive wizard that writes the section back to `agentbus.yaml`.
+---
 
 ## Documentation
 
-Full reference documentation lives in [`docs/`](docs/):
+| Doc                                    | Contents                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`docs/concepts.md`](docs/concepts.md) | Design philosophy, layer architecture, core abstractions, message lifecycle, wildcard patterns  |
+| [`docs/bus.md`](docs/bus.md)           | `Message[T]`, `Topic[T]`, `Node`, `BusHandle`, `MessageBus` — all methods with signatures       |
+| [`docs/harness.md`](docs/harness.md)   | `Harness`, `Session`, providers, `ToolSchema`, `Extension` hooks, compaction, testing interface |
+| [`docs/schemas.md`](docs/schemas.md)   | All Pydantic schemas (`harness`, `common`, `system`) and introspection dataclasses              |
+| [`docs/cli.md`](docs/cli.md)           | CLI commands, socket protocol, programmatic API                                                 |
+| [`docs/launch.md`](docs/launch.md)     | YAML/JSON config reference, `launch_sync`, `build_bus_from_config`                              |
+| [`docs/examples.md`](docs/examples.md) | Annotated walkthroughs of every runnable example in `examples/`                                 |
 
-| Doc | Contents |
-|-----|----------|
-| [`docs/concepts.md`](docs/concepts.md) | Design philosophy, layer architecture, core abstractions, message lifecycle, wildcard patterns |
-| [`docs/bus.md`](docs/bus.md) | `Message[T]`, `Topic[T]`, `Node`, `BusHandle`, `MessageBus` — all methods with signatures |
-| [`docs/harness.md`](docs/harness.md) | `Harness`, `Session`, providers, `ToolSchema`, `Extension` hooks, compaction, testing interface |
-| [`docs/schemas.md`](docs/schemas.md) | All Pydantic schemas (`harness`, `common`, `system`) and introspection dataclasses |
-| [`docs/cli.md`](docs/cli.md) | CLI commands, socket protocol, programmatic API |
-| [`docs/launch.md`](docs/launch.md) | YAML/JSON config reference, `launch_sync`, `build_bus_from_config` |
-| [`docs/examples.md`](docs/examples.md) | Annotated example walkthroughs with key patterns |
+---
 
 ## Development
 

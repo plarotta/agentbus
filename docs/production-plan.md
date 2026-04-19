@@ -14,6 +14,7 @@ Low-risk, high-leverage. No architectural changes. Prereq for Tiers 2 and 3.
 - **GitHub Actions CI.** One workflow: lint → typecheck → test on Python 3.12 and 3.13, driven by `uv`. Cache the uv download.
 - **Secret scanning.** `detect-secrets` with a baseline file and a `pre-commit` hook. Covers accidentally committed API keys (Anthropic / OpenAI / etc).
 - **`agentbus doctor`.** Diagnostic subcommand. Checks: Python version, optional dep availability per configured provider, `~/.agentbus/sessions` writable, `agentbus.yaml` validates against `ChatConfig`, socket reachable (if a bus is running), provider creds in env. Exits non-zero on any failure so it's CI-friendly.
+- **`agentbus setup` wizard. ✅ Shipped.** `agentbus.setup` — interactive full-config flow backed by `questionary` (`uv sync --extra tui`) with an ANSI theme and AgentBus banner. `Prompter` Protocol keeps the wizard test-driven: `QuestionaryPrompter` runs the TUI; `FakePrompter(answers)` lets 24 tests in `tests/test_setup.py` exercise every path without a TTY. Flow: existing-config detect (edit/overwrite/cancel) → provider+model → tools → memory → channels loop → atomic `.bak`-preserving write → doctor probe. `ChannelPlugin.interactive_setup(prompter, existing)` lets each plugin own its sub-flow while inheriting the wizard's styling; Slack and Telegram both ship themed flows. Exit codes: `0` wrote, `1` cancelled, `2` validation error.
 
 ### Tier 1 acceptance
 - `uv run ruff check .` clean

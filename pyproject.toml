@@ -17,7 +17,7 @@ ollama = ["httpx"]
 anthropic = ["anthropic"]
 openai = ["openai"]
 cli = ["typer"]
-tui = ["prompt_toolkit>=3.0", "rich>=13.0"]
+tui = ["prompt_toolkit>=3.0", "rich>=13.0", "questionary>=2.0"]
 mcp = ["mcp>=1.0"]
 slack = ["slack-bolt>=1.18"]
 telegram = ["httpx"]
@@ -29,6 +29,7 @@ all = [
     "typer",
     "prompt_toolkit>=3.0",
     "rich>=13.0",
+    "questionary>=2.0",
     "mcp>=1.0",
     "slack-bolt>=1.18",
 ]
@@ -38,6 +39,7 @@ dev = [
     "mkdocs-material>=9.0",
     "prompt_toolkit>=3.0",
     "rich>=13.0",
+    "questionary>=2.0",
     "ruff>=0.6.0",
     "mypy>=1.11",
     "pre-commit>=3.7",

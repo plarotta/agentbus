@@ -15,16 +15,17 @@ A ROS-inspired typed pub/sub message bus for LLM agent orchestration. Local-firs
 ```bash
 uv sync --extra dev          # install with dev deps (use uv, not pip)
 uv sync --extra anthropic    # install a specific provider extra
-uv sync --extra tui          # install prompt_toolkit + rich for the chat TUI
+uv sync --extra tui          # install prompt_toolkit + rich + questionary (chat TUI + setup wizard)
 uv sync --extra mcp          # install the MCP SDK for mcp_servers: in agentbus.yaml
 uv sync --extra slack        # install slack-bolt for channels.slack gateway
 uv sync --extra telegram     # install httpx for channels.telegram gateway
 uv sync --extra channels     # install both channel extras at once
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests (395 passing)
+uv run pytest tests/ -v      # run all tests (453 passing)
 uv run pytest tests/test_chat.py -v      # single test file
 uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
+uv run agentbus setup        # interactive setup wizard (writes agentbus.yaml)
 uv run agentbus launch agentbus.yaml     # non-chat YAML launcher
 ```
 
@@ -79,6 +80,11 @@ agentbus/
 │   ├── loader.py            # _REGISTRY, ChannelsRuntime, open_channels_runtime
 │   ├── slack/               # SlackPlugin + SlackGatewayNode (slack-bolt Socket Mode)
 │   └── telegram/            # TelegramPlugin + TelegramGatewayNode (httpx long-poll)
+├── setup/                   # `agentbus setup` interactive wizard (questionary + ANSI theme)
+│   ├── __init__.py          # run_setup, Prompter, QuestionaryPrompter, FakePrompter, PromptCancelled
+│   ├── theme.py             # palette + banner + section/note renderers (ANSI only)
+│   ├── prompter.py          # Protocol + Questionary impl + FakePrompter for tests
+│   └── wizard.py            # linear flow: banner → config-detect → provider → tools → memory → channels → doctor
 ├── schemas/
 │   ├── system.py            # LifecycleEvent, Heartbeat, BackpressureEvent, TelemetryEvent, ChannelStatus
 │   ├── common.py            # InboundChat, OutboundChat, ToolRequest, ToolResult
@@ -266,10 +272,25 @@ agentbus daemon status                            # running/stale/absent
 agentbus daemon install systemd agentbus.yaml   > ~/.config/systemd/user/agentbus.service
 agentbus daemon install launchd agentbus.yaml   > ~/Library/LaunchAgents/com.agentbus.daemon.plist
 agentbus channels list                             # list registered channel plugins
-agentbus channels setup slack                      # wizard → writes channels.slack into agentbus.yaml
+agentbus channels setup slack                      # legacy per-channel wizard → writes channels.slack into agentbus.yaml
+agentbus setup [--config PATH] [--force] [--skip-doctor]  # themed full-config wizard (questionary + ANSI theme)
 ```
 
 `topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process.
+
+## Setup wizard architecture
+
+`agentbus setup` is the polished first-run + reconfigure flow. Entry: `cli.py::app` → `agentbus.setup.run_setup`. Three cooperating modules:
+
+- **`setup/theme.py`** — palette + banner helpers. ANSI-only (no rich dep) so it works in dumb terminals and CI logs. Honors `NO_COLOR` and `AGENTBUS_FORCE_COLOR`. Renders the two-line block-art AgentBus logo, section headers, and tone-tagged notes (`ok/warn/fail/info/muted`).
+- **`setup/prompter.py`** — `Prompter` Protocol + two impls. `QuestionaryPrompter` wraps `questionary` (via the `tui` extra) with an AgentBus-cyan style dict; `FakePrompter(answers)` consumes a scripted list so tests run the full flow without a TTY. Cancellation protocol: any Ctrl-C / Ctrl-D / empty script raises `PromptCancelled`, caught once in `run_setup`. This replaces the old scatter of `if answer is None` checks throughout the flow.
+- **`setup/wizard.py`** — linear flow: banner → existing-config detection (edit/overwrite/cancel) → provider+model → tools multi-select → memory confirm → channels loop → atomic write → doctor probe → outro. All user-facing strings live in this file, not the prompter, so test assertions can compare on exact wording.
+
+Integration points:
+- **`ChannelPlugin.interactive_setup(prompter, existing) -> BaseModel`** is the themed equivalent of the legacy `setup_wizard(existing)`. The base class delegates to `setup_wizard` so unported plugins keep working through the new command. `SlackPlugin` and `TelegramPlugin` override with prompter-driven flows.
+- **Atomic write** via `_atomic_write_yaml`: copy existing to `.bak`, write tempfile, `fsync`, `os.replace`. The backup is created *before* the new content is written so a crash mid-rename leaves either old or new visible, never a truncation.
+- **Doctor integration**: the final section re-runs the individual `_check_*` functions from `agentbus.doctor` and pipes each result through `prompter.note(...)` with tone-mapped glyphs — the probe output stays visually coherent with the rest of the wizard. Tests pass `run_doctor=False` to skip probes that would touch the network.
+- **Exit codes**: `0` (wrote), `1` (cancelled), `2` (channel validation error or questionary missing). Fresh configs with an empty existing-file skip the edit/overwrite/cancel prompt entirely.
 
 ## Chat mode architecture
 

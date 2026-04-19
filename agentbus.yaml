@@ -1,7 +1,5 @@
-memory: false
-model: claude-haiku-4-5-20251001
 provider: anthropic
+model: claude-haiku-4-5-20251001
 tools:
-- bash
 - file_read
-- file_write
+memory: false

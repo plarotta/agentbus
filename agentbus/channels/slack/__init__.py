@@ -14,13 +14,16 @@ Install the optional extra::
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from agentbus.channels.base import ChannelPlugin, ProbeResult
 from agentbus.channels.loader import register_plugin
 from agentbus.gateway import GatewayNode
 
 from .config import SlackConfig
+
+if TYPE_CHECKING:
+    from agentbus.setup.prompter import Prompter
 
 
 class SlackPlugin(ChannelPlugin[SlackConfig]):
@@ -66,6 +69,59 @@ class SlackPlugin(ChannelPlugin[SlackConfig]):
         )
 
     @classmethod
+    def interactive_setup(
+        cls,
+        prompter: Prompter,
+        existing: dict | None = None,
+    ) -> SlackConfig:
+        """Themed setup for ``agentbus setup``.
+
+        Follows the same field order as :meth:`setup_wizard` but uses
+        the prompter so it inherits the wizard's palette and keybinds.
+        Token prompts keep the existing value when the user presses
+        Enter on an empty line — the mask is only informational.
+        """
+        existing = existing or {}
+        prompter.note(
+            "Slack needs an app-level token (xapp-…, scope connections:write) "
+            "and a bot token (xoxb-…).",
+            tone="muted",
+        )
+        app_mask = _mask(existing.get("app_token")) or "(none)"
+        bot_mask = _mask(existing.get("bot_token")) or "(none)"
+        app_token = prompter.password(
+            f"App token  [current: {app_mask}]",
+            default=existing.get("app_token"),
+        )
+        bot_token = prompter.password(
+            f"Bot token  [current: {bot_mask}]",
+            default=existing.get("bot_token"),
+        )
+        allowed_channels = _split_csv(
+            prompter.text(
+                "Allowed channel IDs (comma-separated, blank = allow all)",
+                default=",".join(existing.get("allowed_channels") or []),
+            )
+        )
+        allowed_senders = _split_csv(
+            prompter.text(
+                "Allowed sender user IDs (comma-separated, blank = allow all)",
+                default=",".join(existing.get("allowed_senders") or []),
+            )
+        )
+        ignore_bots = prompter.confirm(
+            "Ignore messages from other bots?",
+            default=bool(existing.get("ignore_bots", True)),
+        )
+        return SlackConfig(
+            app_token=app_token or existing.get("app_token", ""),
+            bot_token=bot_token or existing.get("bot_token", ""),
+            allowed_channels=allowed_channels,
+            allowed_senders=allowed_senders,
+            ignore_bots=ignore_bots,
+        )
+
+    @classmethod
     def create_gateway(cls, config: SlackConfig) -> GatewayNode:
         from .gateway import SlackGatewayNode
 
@@ -78,6 +134,10 @@ def _mask(token: str | None) -> str:
     if len(token) < 8:
         return "***"
     return f"{token[:4]}…{token[-4:]}"
+
+
+def _split_csv(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
 
 
 register_plugin(SlackPlugin)

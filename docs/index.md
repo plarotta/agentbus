@@ -55,6 +55,21 @@ With [uv](https://github.com/astral-sh/uv) (recommended):
 uv sync --extra anthropic
 ```
 
+## First run
+
+For the fastest path to a working config, run the interactive wizard — it
+picks provider + model, tools, memory, and each channel plugin's own
+sub-flow, then writes `agentbus.yaml` atomically and runs `agentbus
+doctor` against the new file:
+
+```bash
+uv sync --extra tui
+uv run agentbus setup        # writes ./agentbus.yaml (.bak preserved)
+uv run agentbus chat         # launches the chat TUI (same theme)
+```
+
+See [`cli.md`](cli.md#setup) for flags and exit codes.
+
 ## Bus quickstart
 
 ```python
@@ -135,7 +150,8 @@ agentbus topic echo /tools/request
 agentbus node list
 agentbus graph --format mermaid
 agentbus channels list               # registered channel plugins
-agentbus channels setup slack        # interactive setup wizard
+agentbus setup                        # themed full-config wizard
+agentbus channels setup slack         # per-channel reconfigure
 ```
 
 ## Integrations

@@ -443,15 +443,25 @@ class ChatSession:
         )
 
         # Headless mode prints its own banner; TUI mode prints a richer one
-        # from inside the prompt_toolkit app.
+        # from inside the prompt_toolkit app. Both share the setup wizard's
+        # block-art logo via agentbus.setup.theme so the two entry points
+        # feel consistent.
         if not use_tui and _is_terminal():
+            from agentbus.setup import theme
+
             tool_count = len(self._config.tools)
+            tool_word = "tool" if tool_count == 1 else "tools"
             print(
-                f"AgentBus v{_AGENTBUS_VERSION} • "
-                f"provider: {self._config.provider}/{self._config.model} • "
-                f"{tool_count} tools loaded"
+                theme.render_banner(
+                    _AGENTBUS_VERSION,
+                    tagline=(
+                        f"chat · {self._config.provider}/{self._config.model}"
+                        f" · {tool_count} {tool_word}"
+                    ),
+                )
             )
-            print("Type /help for commands\n")
+            print("  " + theme.colorize("· type /help for commands", theme.MUTED))
+            print()
 
         # Both modes run the bus as a background task so publish/wait_for
         # cycles in the input loop complete against a spinning bus.

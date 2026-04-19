@@ -27,11 +27,14 @@ can't burn CPU forever.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import BaseModel
 
 from agentbus.gateway import GatewayNode
+
+if TYPE_CHECKING:
+    from agentbus.setup.prompter import Prompter
 
 MAX_CONSECUTIVE_GATEWAY_FAILURES = 5
 
@@ -75,11 +78,35 @@ class ChannelPlugin[ConfigT: BaseModel](ABC):
     def setup_wizard(cls, existing: dict | None = None) -> BaseModel:  # pragma: no cover
         """Interactive first-run setup. Subclasses override. Default
         implementation raises — callers should catch and tell the user to
-        edit ``agentbus.yaml`` by hand."""
+        edit ``agentbus.yaml`` by hand.
+
+        This is the legacy entry point used by ``agentbus channels setup
+        <name>`` — it drives raw ``input()`` calls so it works without
+        any TUI dependency. The new :meth:`interactive_setup` hook
+        takes a :class:`~agentbus.setup.prompter.Prompter` and is used
+        by the top-level ``agentbus setup`` wizard for consistent
+        styling. Plugins should implement both where possible.
+        """
         raise NotImplementedError(
             f"{cls.__name__} does not provide an interactive setup wizard; "
             "edit agentbus.yaml manually"
         )
+
+    @classmethod
+    def interactive_setup(
+        cls,
+        prompter: "Prompter",
+        existing: dict | None = None,
+    ) -> BaseModel:
+        """Prompter-based setup — used by ``agentbus setup``.
+
+        Default implementation delegates to :meth:`setup_wizard` so
+        plugins that haven't been ported keep working (with the less
+        polished stdin-only prompts). Plugins that want the full
+        themed experience override this method and drive ``prompter``
+        directly.
+        """
+        return cls.setup_wizard(existing)
 
     @classmethod
     async def probe(cls, config: ConfigT) -> ProbeResult:

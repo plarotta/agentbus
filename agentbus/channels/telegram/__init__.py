@@ -11,13 +11,16 @@ Install the optional extra::
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from agentbus.channels.base import ChannelPlugin, ProbeResult
 from agentbus.channels.loader import register_plugin
 from agentbus.gateway import GatewayNode
 
 from .config import TelegramConfig
+
+if TYPE_CHECKING:
+    from agentbus.setup.prompter import Prompter
 
 
 class TelegramPlugin(ChannelPlugin[TelegramConfig]):
@@ -68,6 +71,36 @@ class TelegramPlugin(ChannelPlugin[TelegramConfig]):
         )
 
     @classmethod
+    def interactive_setup(
+        cls,
+        prompter: Prompter,
+        existing: dict | None = None,
+    ) -> TelegramConfig:
+        """Themed setup for ``agentbus setup`` — same shape as Slack's."""
+        existing = existing or {}
+        prompter.note(
+            "Telegram needs a bot token from @BotFather → /newbot.",
+            tone="muted",
+        )
+        mask = _mask(existing.get("bot_token")) or "(none)"
+        bot_token = prompter.password(
+            f"Bot token  [current: {mask}]",
+            default=existing.get("bot_token"),
+        )
+        allowed_chats_raw = prompter.text(
+            "Allowed chat IDs (comma-separated ints, blank = allow all)",
+            default=",".join(str(x) for x in (existing.get("allowed_chats") or [])),
+            validate=_validate_int_csv,
+        )
+        allowed_chats = [int(x.strip()) for x in allowed_chats_raw.split(",") if x.strip()]
+        return TelegramConfig(
+            bot_token=bot_token or existing.get("bot_token", ""),
+            allowed_chats=allowed_chats,
+            api_base=existing.get("api_base") or "https://api.telegram.org",
+            long_poll_timeout_s=int(existing.get("long_poll_timeout_s") or 25),
+        )
+
+    @classmethod
     def create_gateway(cls, config: TelegramConfig) -> GatewayNode:
         from .gateway import TelegramGatewayNode
 
@@ -80,6 +113,20 @@ def _mask(token: str | None) -> str:
     if len(token) < 8:
         return "***"
     return f"{token[:4]}…{token[-4:]}"
+
+
+def _validate_int_csv(raw: str) -> str | None:
+    if not raw.strip():
+        return None
+    for part in raw.split(","):
+        chunk = part.strip()
+        if not chunk:
+            continue
+        try:
+            int(chunk)
+        except ValueError:
+            return f"not a valid integer: {chunk!r}"
+    return None
 
 
 register_plugin(TelegramPlugin)

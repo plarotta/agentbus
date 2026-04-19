@@ -8,15 +8,29 @@ toolbar; responses stream through rich as rendered Markdown; live tool
 dispatches print dimmed inline above the prompt while the user keeps
 typing.
 
-    AgentBus v0.1.0 • anthropic/claude-haiku-4-5 • 4 tools
-    Type /help for commands, Ctrl-D to exit.
+Visual language is shared with ``agentbus setup`` — the block-art
+banner and cyan/muted palette come from :mod:`agentbus.setup.theme`
+so the two surfaces feel like one product. Specifically:
+
+* Banner: :func:`theme.render_banner` with a chat-specific tagline.
+* Prompt glyph ``❯`` mirrors questionary's qmark styling (cyan bold).
+* Tool dispatch markers: ``↳`` in muted tone (matches the wizard's
+  muted notes).
+* Toolbar: bold cyan ``AgentBus`` lede + muted body, with yellow
+  status verbs while work is in flight.
+* Errors use the theme ``✗`` glyph in bold red.
+
+    █▀█ █▀▀ █▀▀ █▄ █ ▀█▀ █▄▄ █ █ █▀
+    █▀█ █▄█ ██▄ █ ▀█  █  █▄█ █▄█ ▄█
+      v0.1.0 · chat · anthropic/claude-haiku-4-5 · 4 tools
+      · type /help for commands, Ctrl-D to exit
 
     ❯ what's in /etc/hostname
       ↳ file_read
     The hostname file contains `example.local`.
 
     ❯ ▏
-     AgentBus • anthropic/claude-haiku-4-5 • 4 tools • session a1b2c3d4
+     AgentBus · anthropic/claude-haiku-4-5 · 4 tools · session a1b2c3d4
 """
 
 from __future__ import annotations
@@ -35,6 +49,7 @@ from rich.markdown import Markdown
 
 from agentbus.schemas.common import InboundChat, OutboundChat
 from agentbus.schemas.harness import PlannerStatus
+from agentbus.setup import theme
 
 from ._commands import CommandResult, handle_command
 from ._config import ChatConfig
@@ -98,9 +113,16 @@ class ChatApp:
             else "—"
         )
         status = (
-            f" • <ansiyellow>{self._current_status}</ansiyellow>" if self._current_status else ""
+            f" <ansiyellow>· {self._current_status}</ansiyellow>" if self._current_status else ""
         )
-        return HTML(f" <b>AgentBus</b> • {model} • {tools} tools • session {sid}{status}")
+        # <ansicyan> on "AgentBus" matches the banner accent; the "·" separator
+        # mirrors the setup wizard's tagline punctuation so the two surfaces
+        # read as one visual family.
+        return HTML(
+            f" <b><ansicyan>AgentBus</ansicyan></b>"
+            f' <style fg="ansibrightblack">· {model} · {tools} tools · session {sid}</style>'
+            f"{status}"
+        )
 
     def _invalidate(self) -> None:
         """Redraw the toolbar — safe to call even before the session is running."""
@@ -116,10 +138,11 @@ class ChatApp:
 
         status_task = asyncio.create_task(self._drain_status())
         try:
+            prompt_fragment = HTML("<b><ansicyan>❯</ansicyan></b> ")
             with patch_stdout(raw=True):
                 while True:
                     try:
-                        text = await self._session.prompt_async("❯ ")
+                        text = await self._session.prompt_async(prompt_fragment)
                     except EOFError:
                         break
                     except KeyboardInterrupt:
@@ -153,11 +176,20 @@ class ChatApp:
     def _print_banner(self) -> None:
         model = f"{self._config.provider}/{self._config.model}"
         tools = len(self._config.tools)
-        self._console.print(
-            f"[bold cyan]AgentBus[/bold cyan] v{_AGENTBUS_VERSION} "
-            f"[dim]• {model} • {tools} tools[/dim]"
+        tool_word = "tool" if tools == 1 else "tools"
+        # Reuse the setup wizard's block-art logo so ``agentbus chat`` and
+        # ``agentbus setup`` share a single visual identity. We print the
+        # banner string directly (rich.Console would double-escape the
+        # embedded ANSI codes) and follow it with a rich-styled hint line.
+        print(
+            theme.render_banner(
+                _AGENTBUS_VERSION,
+                tagline=f"chat · {model} · {tools} {tool_word}",
+            )
         )
-        self._console.print("[dim]Type /help for commands, Ctrl-D to exit.[/dim]")
+        self._console.print(
+            "  [bright_black]· type /help for commands, Ctrl-D to exit[/bright_black]"
+        )
         self._console.print()
 
     async def _drain_status(self) -> None:
@@ -198,7 +230,7 @@ class ChatApp:
                 self._response_queue.get(), timeout=_RESPONSE_TIMEOUT_S
             )
         except TimeoutError:
-            self._console.print("[red]⚠ response timed out after 5 minutes[/red]")
+            self._console.print("[bold red]✗[/bold red] response timed out after 5 minutes")
             return
         finally:
             self._awaiting_response = False
@@ -221,13 +253,13 @@ class ChatApp:
             return True
         if result.inspect_toggle is not None:
             self._console.print(
-                "[dim]Inspect pane is retired. For a live topic feed, run "
-                "`agentbus topic echo <topic>` in another terminal.[/dim]"
+                "[bright_black]· inspect pane is retired. For a live topic feed, run "
+                "`agentbus topic echo <topic>` in another terminal.[/bright_black]"
             )
         if result.output is not None:
             self._console.print(result.output)
         if result.error:
-            self._console.print(f"[red]Error:[/red] {result.error}")
+            self._console.print(f"[bold red]✗[/bold red] {result.error}")
         return False
 
 

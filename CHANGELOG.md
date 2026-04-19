@@ -6,6 +6,38 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added (Tier 1 — finishing touches)
+- **`agentbus setup` wizard.** New `agentbus.setup` package adds a
+  polished, linear first-run + reconfigure flow backed by `questionary`
+  (`uv sync --extra tui`). The wizard prints the shared block-art
+  AgentBus banner, detects existing `agentbus.yaml` (offering edit /
+  overwrite / cancel), walks provider + model, built-in tools, memory,
+  and each channel plugin's sub-flow, then writes the config atomically
+  (tempfile + `fsync` + `os.replace`) with a `.bak` rollback pointer
+  and finishes with a themed `agentbus doctor` probe. Exit codes: `0`
+  wrote, `1` cancelled, `2` validation error or missing `questionary`.
+  Flags: `--config PATH`, `--force`, `--skip-doctor`.
+
+  Internally, the wizard is driven by a `Prompter` Protocol with two
+  implementations: `QuestionaryPrompter` for the real TTY and
+  `FakePrompter(answers)` so tests can exercise every path without a
+  TTY (24 tests in `tests/test_setup.py`). `ChannelPlugin` gets a new
+  `interactive_setup(prompter, existing)` hook that lets each plugin
+  own its sub-flow while inheriting the wizard's styling — Slack and
+  Telegram both ship themed flows. The base class delegates
+  `interactive_setup` to the legacy `setup_wizard` so un-ported plugins
+  keep working through the new command.
+
+### Changed
+- **Unified `agentbus chat` visual language with `agentbus setup`.** The
+  chat TUI now reuses `agentbus.setup.theme.render_banner` (with a
+  `tagline=` kwarg added for this purpose), so both surfaces share the
+  same block-art logo, cyan accent, muted `·` separators, and `✗`
+  error glyph. Prompt glyph is now a cyan `❯`, the bottom toolbar leads
+  with a bold cyan `AgentBus` followed by muted metadata, and status
+  verbs render in yellow while work is in flight. The headless banner
+  picks up the same treatment. No behavioural changes.
+
 ### Added (Tier 3 — in progress)
 - **Multi-agent orchestration (swarm).** New `agentbus.swarm` module adds
   hub-and-spoke coordination: a coordinator LLM exposes a
