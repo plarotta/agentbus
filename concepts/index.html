@@ -1434,7 +1434,9 @@ sessions, streaming responses, and nested swarms are deferred on purpose.</p>
 <a href="https://github.com/openclaw/openclaw">openclaw</a>. Two channel subpackages
 ship in-tree — <code>channels/slack</code> (Socket Mode via <code>slack-bolt</code>) and
 <code>channels/telegram</code> (raw <code>httpx</code> long-poll) — each is a <code>ChannelPlugin</code>
-with its own <code>ConfigModel</code>, <code>setup_wizard</code>, and <code>create_gateway</code>.</p>
+with its own <code>ConfigModel</code>, <code>setup_wizard</code>, <code>interactive_setup</code>
+(themed hook used by <code>agentbus setup</code>; defaults to delegating to
+<code>setup_wizard</code>), and <code>create_gateway</code>.</p>
 <p>Routing is schema-driven:
 - <code>InboundChat.channel</code> is stamped by the gateway.
 - The planner echoes <code>channel</code> (and metadata) into each <code>OutboundChat</code>.

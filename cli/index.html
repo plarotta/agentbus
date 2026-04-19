@@ -721,6 +721,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#channels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -988,6 +999,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#channels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1068,8 +1090,8 @@ custom path:</p>
 entry. <code>AGENTBUS_LOG_LEVEL</code>, <code>AGENTBUS_LOG_FORMAT</code>, and <code>AGENTBUS_LOG_FILE</code>
 environment variables work too.</p>
 <p>The <code>topic</code>, <code>node</code>, and <code>graph</code> commands require a running bus with a
-matching <code>socket_path</code>. <code>chat</code>, <code>launch</code>, <code>daemon</code>, <code>doctor</code>, <code>channels</code>, and
-<code>--version</code> are self-contained.</p>
+matching <code>socket_path</code>. <code>chat</code>, <code>setup</code>, <code>launch</code>, <code>daemon</code>, <code>doctor</code>,
+<code>channels</code>, and <code>--version</code> are self-contained.</p>
 <hr />
 <h2 id="topic-list">topic list<a class="headerlink" href="#topic-list" title="Permanent link">&para;</a></h2>
 <p>List all registered topics with their schema, retention setting, and
@@ -1294,48 +1316,118 @@ provider credentials. Exits non-zero on any failure so it is CI-friendly.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>agentbus<span class="w"> </span>doctor
 </code></pre></div>
 <hr />
+<h2 id="setup">setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<p>Full-config interactive wizard. Writes an <code>agentbus.yaml</code> from a linear
+questionary-backed flow (banner → provider → tools → memory → channels →
+doctor probe). Requires the <code>tui</code> extra (<code>uv sync --extra tui</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>agentbus<span class="w"> </span>setup<span class="w"> </span><span class="o">[</span>--config<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--skip-doctor<span class="o">]</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config PATH</code></td>
+<td>Target config file. Default: <code>./agentbus.yaml</code>.</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Skip the edit/overwrite/cancel prompt and always overwrite.</td>
+</tr>
+<tr>
+<td><code>--skip-doctor</code></td>
+<td>Skip the post-write <code>agentbus doctor</code> probe.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit codes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Config written successfully (doctor warnings do not fail).</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>User cancelled — Ctrl-C, declined overwrite, or chose "cancel".</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Validation error (channel sub-flow failed, <code>questionary</code> not installed).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the wizard does:</strong></p>
+<ol>
+<li>Prints the shared block-art AgentBus banner.</li>
+<li>Detects existing config; offers <em>edit</em> (fill defaults from existing
+   values), <em>overwrite</em> (start blank), or <em>cancel</em>.</li>
+<li>Picks provider + model (pre-filled for the chosen provider).</li>
+<li>Selects built-in tools (<code>bash</code>, <code>file_read</code>, <code>file_write</code>, <code>code_exec</code>).</li>
+<li>Toggles memory.</li>
+<li>Loops through channel plugins (Slack, Telegram) — each plugin owns its
+   own sub-flow via <code>ChannelPlugin.interactive_setup(prompter, existing)</code>.</li>
+<li>Atomically writes the config, preserving the previous version at
+   <code>agentbus.yaml.bak</code>.</li>
+<li>Runs the doctor probe against the new file and prints themed results.</li>
+</ol>
+<p>The wizard and <code>agentbus chat</code> share a single visual language — same
+banner, cyan accent, muted <code>·</code> separators, <code>✗</code> error glyph.</p>
+<hr />
 <h2 id="channels">channels<a class="headerlink" href="#channels" title="Permanent link">&para;</a></h2>
 <p>Multi-channel gateway plugin management. See <a href="../launch/">Launch Reference</a>
 for the <code>channels:</code> config shape.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>list<span class="w">                 </span><span class="c1"># registered channel plugins</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>setup<span class="w"> </span>slack<span class="w">          </span><span class="c1"># interactive setup wizard</span>
-<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>setup<span class="w"> </span>telegram
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>list<span class="w">                 </span><span class="c1"># registered channel plugins</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>setup<span class="w"> </span>slack<span class="w">          </span><span class="c1"># legacy per-channel wizard</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>agentbus<span class="w"> </span>channels<span class="w"> </span>setup<span class="w"> </span>telegram
 </code></pre></div>
-<p><code>setup</code> dispatches to the plugin's <code>setup_wizard</code> and writes the resulting
-config back to <code>channels.&lt;name&gt;</code> in <code>agentbus.yaml</code>.</p>
+<p>For a full themed configuration experience — provider, tools, memory, and
+every channel in one flow — prefer <code>agentbus setup</code>. <code>channels setup
+&lt;name&gt;</code> remains for per-channel reconfigure; it writes back to
+<code>channels.&lt;name&gt;</code> in <code>agentbus.yaml</code>.</p>
 <hr />
 <h2 id="-version">--version<a class="headerlink" href="#-version" title="Permanent link">&para;</a></h2>
 <p>Print the installed version (from <code>pyproject.toml</code> via <code>importlib.metadata</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>agentbus<span class="w"> </span>--version
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>agentbus<span class="w"> </span>--version
 </code></pre></div>
 <p>Also exposed as <code>agentbus.__version__</code> on the Python API.</p>
 <hr />
 <h2 id="programmatic-access">Programmatic access<a class="headerlink" href="#programmatic-access" title="Permanent link">&para;</a></h2>
 <p>All CLI commands are also available as Python functions:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.cli</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    <span class="n">topic_list</span><span class="p">,</span>
-<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    <span class="n">topic_echo</span><span class="p">,</span>
-<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    <span class="n">node_list</span><span class="p">,</span>
-<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="n">node_info</span><span class="p">,</span>
-<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    <span class="n">graph</span><span class="p">,</span>
-<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="p">)</span>
-<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>
-<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="c1"># Synchronous — uses asyncio.run() internally</span>
-<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">topic_list</span><span class="p">(</span><span class="n">socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/myapp.sock&quot;</span><span class="p">))</span>
-<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">graph</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;mermaid&quot;</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.cli</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    <span class="n">topic_list</span><span class="p">,</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    <span class="n">topic_echo</span><span class="p">,</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    <span class="n">node_list</span><span class="p">,</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    <span class="n">node_info</span><span class="p">,</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    <span class="n">graph</span><span class="p">,</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="p">)</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="c1"># Synchronous — uses asyncio.run() internally</span>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">topic_list</span><span class="p">(</span><span class="n">socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/myapp.sock&quot;</span><span class="p">))</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">graph</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;mermaid&quot;</span><span class="p">))</span>
 </code></pre></div>
 <p>For use inside an already-running event loop, use the async primitive directly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">_socket_request</span><span class="p">,</span> <span class="n">_format_json</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="c1"># Inside an async context (e.g. a test):</span>
-<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="n">raw</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_socket_request</span><span class="p">({</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">},</span> <span class="n">socket_path</span><span class="o">=</span><span class="n">socket_path</span><span class="p">)</span>
-<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">_format_json</span><span class="p">(</span><span class="n">raw</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentbus.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">_socket_request</span><span class="p">,</span> <span class="n">_format_json</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="c1"># Inside an async context (e.g. a test):</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="n">raw</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_socket_request</span><span class="p">({</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;graph&quot;</span><span class="p">},</span> <span class="n">socket_path</span><span class="o">=</span><span class="n">socket_path</span><span class="p">)</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">_format_json</span><span class="p">(</span><span class="n">raw</span><span class="p">))</span>
 </code></pre></div>
 <hr />
 <h2 id="socket-protocol">Socket protocol<a class="headerlink" href="#socket-protocol" title="Permanent link">&para;</a></h2>
 <p>The introspection server uses newline-delimited JSON over a Unix domain socket.
 You can speak to it with any tool:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;{&quot;cmd&quot;: &quot;topics&quot;}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>nc<span class="w"> </span>-U<span class="w"> </span>/tmp/agentbus.sock
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;{&quot;cmd&quot;: &quot;topics&quot;}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>nc<span class="w"> </span>-U<span class="w"> </span>/tmp/agentbus.sock
 </code></pre></div>
 <p><strong>Commands:</strong></p>
 <table>
