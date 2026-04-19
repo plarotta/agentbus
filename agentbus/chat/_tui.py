@@ -22,7 +22,7 @@ so the two surfaces feel like one product. Specifically:
 
     █▀█ █▀▀ █▀▀ █▄ █ ▀█▀ █▄▄ █ █ █▀
     █▀█ █▄█ ██▄ █ ▀█  █  █▄█ █▄█ ▄█
-      v0.1.0 · chat · anthropic/claude-haiku-4-5 · 4 tools
+      v0.2.0 · chat · anthropic/claude-haiku-4-5 · 4 tools
       · type /help for commands, Ctrl-D to exit
 
     ❯ what's in /etc/hostname
@@ -47,6 +47,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 from rich.markdown import Markdown
 
+from agentbus import __version__ as _AGENTBUS_VERSION
 from agentbus.schemas.common import InboundChat, OutboundChat
 from agentbus.schemas.harness import PlannerStatus
 from agentbus.setup import theme
@@ -59,7 +60,6 @@ if TYPE_CHECKING:
 
     from ._planner import ChatPlannerNode
 
-_AGENTBUS_VERSION = "0.1.0"
 _DEFAULT_HISTORY_PATH = Path.home() / ".agentbus" / "history"
 _RESPONSE_TIMEOUT_S = 300.0
 

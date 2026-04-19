@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-18
+
 ### Added (Tier 1 — finishing touches)
 - **`agentbus setup` wizard.** New `agentbus.setup` package adds a
   polished, linear first-run + reconfigure flow backed by `questionary`
@@ -237,5 +239,6 @@ Initial prototype.
 - YAML launcher (`agentbus launch agentbus.yaml`) and `GatewayNode` base
   class for external-channel bridges.
 
-[Unreleased]: https://github.com/plarotta/agentbus/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/plarotta/agentbus/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/plarotta/agentbus/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/plarotta/agentbus/releases/tag/v0.1.0

@@ -10,6 +10,7 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
+from agentbus import __version__ as _AGENTBUS_VERSION
 from agentbus.bus import MessageBus
 from agentbus.chat._commands import CommandResult, handle_command
 from agentbus.chat._config import ChatConfig
@@ -47,8 +48,6 @@ class _ChatBusFilter(logging.Filter):
 
 if TYPE_CHECKING:
     pass
-
-_AGENTBUS_VERSION = "0.1.0"
 
 # ANSI codes
 _DIM = "\033[2m"
