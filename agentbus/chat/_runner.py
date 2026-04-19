@@ -452,6 +452,7 @@ class ChatSession:
 
             tool_count = len(self._config.tools)
             tool_word = "tool" if tool_count == 1 else "tools"
+            print("\n")
             print(
                 theme.render_banner(
                     _AGENTBUS_VERSION,

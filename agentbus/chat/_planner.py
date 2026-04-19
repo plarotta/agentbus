@@ -112,6 +112,13 @@ class ChatPlannerNode(Node):
     def session(self) -> Session:
         return self._session
 
+    @property
+    def context_window(self) -> int | None:
+        """Provider context window in tokens, once the harness is live."""
+        if self._harness is None:
+            return None
+        return self._harness.context_window
+
     async def on_init(self, bus) -> None:
         self._bus = bus
         provider = (

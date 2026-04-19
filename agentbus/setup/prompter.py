@@ -108,6 +108,7 @@ class QuestionaryPrompter:
     # ── presentation ──────────────────────────────────────────────────
 
     def banner(self, version: str | None = None) -> None:
+        print("\n")
         print(theme.render_banner(version))
 
     def section(self, title: str, subtitle: str | None = None) -> None:

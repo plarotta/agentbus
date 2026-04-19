@@ -38,12 +38,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -62,6 +63,44 @@ if TYPE_CHECKING:
 
 _DEFAULT_HISTORY_PATH = Path.home() / ".agentbus" / "history"
 _RESPONSE_TIMEOUT_S = 300.0
+
+# Override prompt_toolkit's default `reverse`-video toolbar (light-gray
+# background) which renders our muted `ansibrightblack` body text as
+# unreadable gray-on-gray. A dark background with no forced foreground
+# lets the inline <ansicyan>/<style fg="..."> tags carry the actual
+# colors.
+_TOOLBAR_STYLE = Style.from_dict(
+    {
+        "bottom-toolbar": "noreverse bg:#1e1e1e #cccccc",
+        "bottom-toolbar.text": "noreverse bg:#1e1e1e #cccccc",
+    }
+)
+
+
+# Classic 10-frame braille spinner — same cadence as questionary/rich.
+# Renders as a single column in most monospace fonts so the toolbar
+# width stays stable across frames.
+_SPINNER_FRAMES: tuple[str, ...] = (
+    "⠋",
+    "⠙",
+    "⠹",
+    "⠸",
+    "⠼",
+    "⠴",
+    "⠦",
+    "⠧",
+    "⠇",
+    "⠏",
+)
+
+
+def _fmt_tokens(n: int) -> str:
+    """Human-readable token count: 842, 1.2k, 12k, 200k."""
+    if n < 1_000:
+        return str(n)
+    if n < 10_000:
+        return f"{n / 1_000:.1f}k"
+    return f"{n // 1_000}k"
 
 
 class ChatApp:
@@ -91,6 +130,10 @@ class ChatApp:
         self._console = Console()
         self._current_status: str = ""
         self._awaiting_response: bool = False
+        self._spinner_frame: int = 0
+        # rich.Status handle set during _await_response so _drain_status can
+        # live-update the label when tool dispatches happen mid-wait.
+        self._active_spinner: Any = None
 
         history_path = history_path or _DEFAULT_HISTORY_PATH
         with contextlib.suppress(OSError):
@@ -99,7 +142,8 @@ class ChatApp:
         self._session: PromptSession[str] = PromptSession(
             history=FileHistory(str(history_path)),
             bottom_toolbar=self._bottom_toolbar,
-            refresh_interval=0.5,
+            refresh_interval=0.12,
+            style=_TOOLBAR_STYLE,
         )
 
     # ── Toolbar ─────────────────────────────────────────────────────────────
@@ -112,17 +156,41 @@ class ChatApp:
             if self._planner is not None and self._planner.session is not None
             else "—"
         )
-        status = (
-            f" <ansiyellow>· {self._current_status}</ansiyellow>" if self._current_status else ""
-        )
+        usage = self._format_usage()
+        status = self._format_status()
         # <ansicyan> on "AgentBus" matches the banner accent; the "·" separator
         # mirrors the setup wizard's tagline punctuation so the two surfaces
         # read as one visual family.
         return HTML(
             f" <b><ansicyan>AgentBus</ansicyan></b>"
             f' <style fg="ansibrightblack">· {model} · {tools} tools · session {sid}</style>'
+            f"{usage}"
             f"{status}"
         )
+
+    def _format_status(self) -> str:
+        """Render the spinner + status label while a reply is in flight."""
+        if not self._awaiting_response:
+            return ""
+        frame = _SPINNER_FRAMES[self._spinner_frame % len(_SPINNER_FRAMES)]
+        self._spinner_frame += 1
+        label = self._current_status or "thinking"
+        return f" <ansiyellow>· {frame} {label}</ansiyellow>"
+
+    def _format_usage(self) -> str:
+        """Render the token-usage meter. Colors step warn → red as the window fills."""
+        if self._planner is None or self._planner.session is None:
+            return ""
+        used = self._planner.session.total_tokens()
+        window = self._planner.context_window
+        if window and window > 0:
+            pct = used / window
+            color = "ansired" if pct >= 0.85 else "ansiyellow" if pct >= 0.6 else "ansigreen"
+            body = f"{_fmt_tokens(used)} / {_fmt_tokens(window)} tok ({pct * 100:.0f}%)"
+        else:
+            color = "ansibrightblack"
+            body = f"{_fmt_tokens(used)} tok"
+        return f' <style fg="ansibrightblack">·</style> <{color}>{body}</{color}>'
 
     def _invalidate(self) -> None:
         """Redraw the toolbar — safe to call even before the session is running."""
@@ -181,6 +249,9 @@ class ChatApp:
         # ``agentbus setup`` share a single visual identity. We print the
         # banner string directly (rich.Console would double-escape the
         # embedded ANSI codes) and follow it with a rich-styled hint line.
+        # Leading blank lines give the banner breathing room from whatever
+        # launch command the user just typed.
+        print("\n")
         print(
             theme.render_banner(
                 _AGENTBUS_VERSION,
@@ -199,6 +270,8 @@ class ChatApp:
             if label is not None:
                 self._current_status = label
                 self._invalidate()
+                if self._active_spinner is not None:
+                    self._active_spinner.update(f"[yellow]{label}[/yellow]")
             # Echo tool dispatches inline only while we're actively waiting
             # for a response — otherwise bus-internal traffic would scroll
             # into the terminal.
@@ -225,14 +298,18 @@ class ChatApp:
     async def _await_response(self) -> None:
         self._awaiting_response = True
         self._invalidate()
+        spinner = self._console.status("[yellow]thinking…[/yellow]", spinner="dots")
+        self._active_spinner = spinner
         try:
-            response: OutboundChat = await asyncio.wait_for(
-                self._response_queue.get(), timeout=_RESPONSE_TIMEOUT_S
-            )
+            with spinner:
+                response: OutboundChat = await asyncio.wait_for(
+                    self._response_queue.get(), timeout=_RESPONSE_TIMEOUT_S
+                )
         except TimeoutError:
             self._console.print("[bold red]✗[/bold red] response timed out after 5 minutes")
             return
         finally:
+            self._active_spinner = None
             self._awaiting_response = False
             self._current_status = ""
             self._invalidate()
