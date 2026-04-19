@@ -1,6 +1,6 @@
 # AgentBus — Production Readiness Plan
 
-Status: **Tier 1 complete; Tier 2 complete; Tier 3 in flight — MCP, Memory, Channels, Swarm shipped.** See `progress.md` for MVP status, `plan.md` for the original implementation spec, and `CHANGELOG.md` for the ship log.
+Status: **Tiers 1 + 2 complete; Tier 3 shipped (MCP, memory, channels, swarm).** See `CHANGELOG.md` for the version-by-version ship log.
 
 This plan turns AgentBus from an MVP into a production-grade system. It is organized in three tiers; each tier is independently shippable. References: [openclaw/openclaw](https://github.com/openclaw/openclaw) (engineering hygiene, daemon support, observability, permissions) and [plarotta/claude-code](https://github.com/plarotta/claude-code) (MCP, multi-agent orchestration, background memory).
 

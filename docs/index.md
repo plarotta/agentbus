@@ -22,38 +22,13 @@ Nodes declare what they publish and subscribe to. The bus enforces schema correc
 
 ## Install
 
-```bash
-# core
-pip install agentbus
-
-# with a specific LLM provider
-pip install "agentbus[anthropic]"
-pip install "agentbus[openai]"
-pip install "agentbus[ollama]"
-
-# with CLI tools
-pip install "agentbus[cli]"
-
-# interactive TUI for `agentbus chat` (prompt_toolkit + rich)
-pip install "agentbus[tui]"
-
-# MCP stdio servers (registers their tools with the planner)
-pip install "agentbus[mcp]"
-
-# multi-channel gateways
-pip install "agentbus[slack]"
-pip install "agentbus[telegram]"
-pip install "agentbus[channels]"   # both at once
-
-# everything
-pip install "agentbus[all]"
-```
-
 With [uv](https://github.com/astral-sh/uv) (recommended):
 
 ```bash
-uv sync --extra anthropic
+uv sync --extra anthropic     # or: openai, ollama, cli, tui, mcp, slack, telegram, channels, all
 ```
+
+Plain pip works too — `pip install "agentbus[anthropic]"`, etc.
 
 ## First run
 

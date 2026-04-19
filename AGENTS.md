@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Project Status
 
-See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–3b are complete. Active work is on Phase 4 (harness layer).
+MVP (Phases 1–6) is complete, along with the chat mode, Tier 1/2 production-readiness work (setup wizard, sandbox, permissions, daemon, structured logging), and Tier 3 integrations (MCP, memory, swarm, Slack + Telegram channels). See `CHANGELOG.md` for the ship log and `CLAUDE.md` for the authoritative architecture notes.
 
 ## What AgentBus Is
 

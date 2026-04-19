@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-See `progress.md` for granular status and `plan.md` for full implementation spec. Phases 1–6 of the MVP are complete. The `agentbus chat` interactive mode (see `feature-intereactive_mode.md`) is also complete — all 4 phases landed, wired into `agentbus/chat/` and reachable via `agentbus chat`.
+MVP (Phases 1–6) and `agentbus chat` interactive mode are complete. The Tier 1/2 production-readiness work in `docs/production-plan.md` is also shipped (setup wizard, sandbox, permissions, daemon, graceful shutdown, structured logging, `/trace` + `/usage`). Tier 3 integrations (MCP, memory, swarm, Slack + Telegram channels) are shipped. See `CHANGELOG.md` for the ship log.
 
 ## What AgentBus Is
 
