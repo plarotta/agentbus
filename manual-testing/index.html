@@ -1,0 +1,1184 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="ROS-inspired typed pub/sub message bus for LLM agent orchestration">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Manual Testing Plan - AgentBus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#manual-testing-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentBus" class="md-header__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentBus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Manual Testing Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../bus/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../production-plan/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Production Plan
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentBus" class="md-nav__button md-logo" aria-label="AgentBus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentBus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/plarotta/agentbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    plarotta/agentbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bus Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../harness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Harness Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../launch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Launch Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pre-flight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pre-flight
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-setup-wizard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Setup wizard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-chat-tui-mode-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Chat — TUI mode (default)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-chat-slash-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Chat — slash commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-chat-headless-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Chat — headless mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-sandbox-subprocess-backend-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sandbox — subprocess backend (default)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Permissions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-memory-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Memory node
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-mcp-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. MCP gateway
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-swarm-hub-and-spoke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Swarm (hub-and-spoke)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-channels-slack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Channels — Slack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-channels-telegram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Channels — Telegram
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-daemon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Daemon
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-launch-yaml-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Launch (YAML-first)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-cli-introspection-against-a-running-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. CLI introspection (against a running bus)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-smoke-matrix-quick-regression-after-any-large-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Smoke matrix (quick regression after any large change)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="manual-testing-plan">Manual Testing Plan<a class="headerlink" href="#manual-testing-plan" title="Permanent link">&para;</a></h1>
+<p>A practical end-to-end checklist for verifying every user-facing surface of AgentBus before a release. Run top-to-bottom on a fresh clone (or at least a fresh shell). Pairs well with the automated test suite (<code>uv run pytest tests/</code>) — the suite proves correctness, this plan proves <em>feel</em>.</p>
+<p><strong>Setup once per run:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>all
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span>...<span class="w">      </span><span class="c1"># or OPENAI_API_KEY for the openai path</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>ollama<span class="w"> </span>serve<span class="w"> </span><span class="p">&amp;</span><span class="w">                     </span><span class="c1"># only if testing the ollama/memory paths</span>
+</code></pre></div>
+<p>Track progress by ticking each box as you finish. Expected behavior is called out in <em>italics</em>; red-flag behavior in <strong>bold</strong>.</p>
+<hr />
+<h2 id="1-pre-flight">1. Pre-flight<a class="headerlink" href="#1-pre-flight" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] <code>uv run agentbus --version</code> → prints <code>agentbus 0.2.0</code> (or current)</li>
+<li>[ ] <code>uv run agentbus doctor</code> → all checks ✓ or explicit warnings for optional deps you haven't installed. <strong>Fail:</strong> anything reporting <code>fail</code> for a dep you have installed.</li>
+<li>[ ] <code>uv run agentbus doctor</code> without an <code>ANTHROPIC_API_KEY</code> set → provider-creds check warns, not crashes.</li>
+</ul>
+<hr />
+<h2 id="2-setup-wizard">2. Setup wizard<a class="headerlink" href="#2-setup-wizard" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] Move <code>agentbus.yaml</code> aside: <code>mv agentbus.yaml agentbus.yaml.saved</code></li>
+<li>[ ] <code>uv run agentbus setup</code> → banner renders with ~2 blank lines of breathing room above it, then linear flow: provider → model → tools → memory → channels → doctor probe → outro.</li>
+<li>[ ] Pick <code>anthropic</code> provider, default model, enable all tools, skip memory and channels. Wizard writes <code>agentbus.yaml</code>. <em>Verify contents:</em> <code>cat agentbus.yaml</code>.</li>
+<li>[ ] Re-run <code>uv run agentbus setup</code>. Now prompts edit / overwrite / cancel. Pick <strong>cancel</strong> — exit code 1, no write.</li>
+<li>[ ] Pick <strong>overwrite</strong> — a <code>agentbus.yaml.bak</code> is written alongside.</li>
+<li>[ ] Pick <strong>edit</strong> — prompts fill with existing values as defaults.</li>
+<li>[ ] Ctrl-C mid-wizard → clean exit, no partial file written.</li>
+</ul>
+<hr />
+<h2 id="3-chat-tui-mode-default">3. Chat — TUI mode (default)<a class="headerlink" href="#3-chat-tui-mode-default" title="Permanent link">&para;</a></h2>
+<p>Start a fresh session from the wizard-written config.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>agentbus<span class="w"> </span>chat
+</code></pre></div>
+<ul>
+<li>[ ] Banner appears with the two blank lines of spacing above the block-art logo.</li>
+<li>[ ] Bottom toolbar shows <code>AgentBus · &lt;provider&gt;/&lt;model&gt; · N tools · session &lt;id&gt;</code> on a <strong>dark</strong> background (not light gray). Text is readable.</li>
+<li>[ ] Token meter renders at the right of the toolbar. Starts as <code>0 tok</code> or <code>0 / 200k tok (0%)</code> once a harness call has happened.</li>
+<li>[ ] Type a prompt. While waiting, a rich-style <strong>dot spinner</strong> appears under the <code>❯</code> line with text <code>thinking…</code>. If a tool dispatches mid-flight, the spinner label updates to <code>↳ &lt;tool_name&gt;</code>.</li>
+<li>[ ] Spinner disappears when the response renders. Response renders as markdown.</li>
+<li>[ ] Token meter climbs. Colors step green → yellow (≥60%) → red (≥85%) as the window fills (harder to verify — try a very small <code>context_window</code> by hand if you want).</li>
+<li>[ ] Input history persists across sessions: exit, re-run, hit Up-arrow — see prior prompts.</li>
+<li>[ ] Ctrl-D exits cleanly. Ctrl-C clears the current line without exiting.</li>
+</ul>
+<hr />
+<h2 id="4-chat-slash-commands">4. Chat — slash commands<a class="headerlink" href="#4-chat-slash-commands" title="Permanent link">&para;</a></h2>
+<p>All inside a live <code>agentbus chat</code> TUI session:</p>
+<ul>
+<li>[ ] <code>/help</code> → lists all commands.</li>
+<li>[ ] <code>/topics</code> → shows the registered topics with retention + subscriber count.</li>
+<li>[ ] <code>/nodes</code> → shows <code>chat_planner</code>, <code>chat_tools</code>, observer, etc.</li>
+<li>[ ] <code>/graph</code> → mermaid diagram renders.</li>
+<li>[ ] <code>/echo /tools/request</code> → streams live tool requests (hit it, then send another prompt).</li>
+<li>[ ] <code>/trace</code> → walks the message log for the most recent correlation_id; shows planner → tool → planner path.</li>
+<li>[ ] <code>/usage</code> → token breakdown by role (user/assistant/system/tool). Totals match toolbar meter.</li>
+<li>[ ] <code>/tools</code> → lists tool schemas visible to the planner (builtins + MCP + memory if enabled).</li>
+<li>[ ] <code>/session list</code> → shows existing sessions. <code>/session new</code> starts fresh. <code>/session load &lt;id&gt;</code> resumes.</li>
+<li>[ ] <code>/quit</code> exits cleanly.</li>
+</ul>
+<hr />
+<h2 id="5-chat-headless-mode">5. Chat — headless mode<a class="headerlink" href="#5-chat-headless-mode" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>run<span class="w"> </span>agentbus<span class="w"> </span>chat<span class="w"> </span>--headless
+</code></pre></div>
+<ul>
+<li>[ ] Banner renders with the same spacing. <strong>No toolbar</strong> (headless).</li>
+<li>[ ] Prompt loop works via plain stdin/stdout.</li>
+<li>[ ] <code>--verbose</code> prints <code>↳ tool_name</code> inline while tools dispatch.</li>
+<li>[ ] Pipe input works: <code>echo "what is 2+2" | uv run agentbus chat --headless --quiet</code>.</li>
+</ul>
+<hr />
+<h2 id="6-sandbox-subprocess-backend-default">6. Sandbox — subprocess backend (default)<a class="headerlink" href="#6-sandbox-subprocess-backend-default" title="Permanent link">&para;</a></h2>
+<p>Enable <code>bash</code> in <code>agentbus.yaml</code>. Inside chat:</p>
+<ul>
+<li>[ ] Ask the agent to run <code>echo hello</code> via bash. Output should contain <code>hello</code>.</li>
+<li>[ ] Ask it to run <code>pwd</code>. Output path contains <code>agentbus-sandbox-</code> (the per-invocation tempdir). <strong>Fail:</strong> output shows your real working directory.</li>
+<li>[ ] Ask it to run <code>env</code>. <strong><code>ANTHROPIC_API_KEY</code> must NOT appear.</strong> <code>PATH</code>, <code>HOME</code>, <code>LANG</code> do.</li>
+<li>[ ] Ask it to run <code>sleep 60</code> with a 5s tool timeout. Sandbox kills the process group after ~5s and returns <code>Error: command timed out</code>.</li>
+<li>[ ] Ask it to run <code>yes | head -c 10000000</code> (10 MB of <code>y</code>s). Output is truncated at 256 KiB with a <code>[output truncated at 262144 bytes]</code> note.</li>
+<li>[ ] Exit chat, check <code>ls /tmp | grep agentbus-sandbox-</code> → tempdirs cleaned up, none lingering.</li>
+</ul>
+<p><strong>Docker backend (optional — requires <code>docker</code> on PATH):</strong></p>
+<p>Edit <code>agentbus.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">sandbox</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python:3.12-slim</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<ul>
+<li>[ ] Re-run <code>agentbus chat</code>, ask for a bash tool call. Sandbox spawns <code>docker run --rm --read-only ...</code>. First call pulls the image.</li>
+<li>[ ] Inside the docker backend, <code>curl https://example.com</code> fails (no network).</li>
+<li>[ ] Set <code>network: true</code>, retry — <code>curl</code> works.</li>
+<li>[ ] <code>docker ps -a</code> shows no lingering containers after the chat exits.</li>
+</ul>
+<hr />
+<h2 id="7-permissions">7. Permissions<a class="headerlink" href="#7-permissions" title="Permanent link">&para;</a></h2>
+<p>Edit <code>agentbus.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">permissions</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">bash</span><span class="p">:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approval_required</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">deny_commands</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;rm&quot;</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">file_write</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="nt">deny_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;~/.ssh&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/etc&quot;</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">allow_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;~/agentbus-playground&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<ul>
+<li>[ ] Run <code>uv run agentbus chat --headless</code> (approval prompts only wire up in headless mode). Ask the agent to <code>ls /</code>. Prompt appears on stdin — approve with <code>y</code>. Command runs.</li>
+<li>[ ] Ask it to <code>rm /tmp/foo</code>. <strong>No approval prompt</strong> — denied outright by the deny rule (verify this short-circuits before the approval).</li>
+<li>[ ] Ask the agent to write to <code>~/.ssh/authorized_keys</code>. Deny rule fires, returns <code>Error: permission denied: ...</code>.</li>
+<li>[ ] Ask it to write to <code>~/agentbus-playground/test.txt</code>. Allowed.</li>
+<li>[ ] Ask it to write to <code>~/agentbus-playground/../../etc/passwd</code>. Path-traversal escape attempt — deny rule still fires (the path is resolved before comparison).</li>
+</ul>
+<hr />
+<h2 id="8-memory-node">8. Memory node<a class="headerlink" href="#8-memory-node" title="Permanent link">&para;</a></h2>
+<p>Requires Ollama running with an embedding model:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ollama<span class="w"> </span>pull<span class="w"> </span>nomic-embed-text
+</code></pre></div>
+<p>In <code>agentbus.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">memory</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ollama</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nomic-embed-text</span>
+</code></pre></div>
+<ul>
+<li>[ ] Start chat. Say <code>"Remember that my favorite color is cyan."</code> — regular reply.</li>
+<li>[ ] Say <code>"What's my favorite color?"</code> — the agent calls <code>memory_search</code> (visible in <code>/usage</code> or <code>--verbose</code>) and replies <code>cyan</code>.</li>
+<li>[ ] Kill chat, restart with <code>--no-memory</code>. Ask the same question — agent no longer knows.</li>
+<li>[ ] <code>ls -lh ~/.agentbus/memory.db</code> → file exists and is growing.</li>
+</ul>
+<hr />
+<h2 id="9-mcp-gateway">9. MCP gateway<a class="headerlink" href="#9-mcp-gateway" title="Permanent link">&para;</a></h2>
+<p>Install <code>uv sync --extra mcp</code>. In <code>agentbus.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">mcp_servers</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">filesystem</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npx</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;-y&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;@modelcontextprotocol/server-filesystem&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/tmp&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<ul>
+<li>[ ] Start chat. <code>/tools</code> → lists <code>mcp__filesystem__*</code> alongside builtins.</li>
+<li>[ ] Ask the agent to list files in <code>/tmp</code> via the MCP tool. Works.</li>
+<li>[ ] Stop the MCP server externally mid-call (kill the npx process) — chat doesn't crash; tool call surfaces <code>ToolResult.error</code>.</li>
+</ul>
+<hr />
+<h2 id="10-swarm-hub-and-spoke">10. Swarm (hub-and-spoke)<a class="headerlink" href="#10-swarm-hub-and-spoke" title="Permanent link">&para;</a></h2>
+<p>Run the bundled example:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>examples/swarm/main.py
+</code></pre></div>
+<ul>
+<li>[ ] Example completes end-to-end. Coordinator LLM dispatches to each sub-agent via <code>dispatch_subagent</code>. Each sub-agent runs in its own Harness.</li>
+<li>[ ] Inspect <code>/swarm/&lt;name&gt;/inbound</code> + <code>/swarm/&lt;name&gt;/outbound</code> via <code>agentbus topic list</code> (from a second terminal) while it runs.</li>
+<li>[ ] Sub-agents never publish to each other's inbound topic — all handoffs route through the coordinator.</li>
+</ul>
+<hr />
+<h2 id="11-channels-slack">11. Channels — Slack<a class="headerlink" href="#11-channels-slack" title="Permanent link">&para;</a></h2>
+<p>Requires <code>uv sync --extra slack</code>, an app token (<code>xapp-…</code>), a bot token (<code>xoxb-…</code>), and a test Slack workspace.</p>
+<ul>
+<li>[ ] <code>uv run agentbus channels setup slack</code> writes the <code>channels.slack</code> block.</li>
+<li>[ ] <code>uv run agentbus doctor</code> → Slack probe reports <code>ok</code> (auth.test succeeds).</li>
+<li>[ ] <code>uv run agentbus launch agentbus.yaml</code> → gateway connects. <code>/system/channels</code> topic sees <code>ChannelStatus(state=connected)</code> (use <code>agentbus topic echo /system/channels</code> from a second terminal).</li>
+<li>[ ] DM the bot — response threads correctly.</li>
+<li>[ ] Mention the bot in a channel outside <code>allowed_channels</code> — <strong>no reply</strong>.</li>
+<li>[ ] Rotate the token to invalid — gateway publishes <code>state=error</code> and stops retrying (no hot loop).</li>
+<li>[ ] Send a very long prompt that triggers &gt;8000-char reply — chunked cleanly at paragraph/line boundaries.</li>
+</ul>
+<hr />
+<h2 id="12-channels-telegram">12. Channels — Telegram<a class="headerlink" href="#12-channels-telegram" title="Permanent link">&para;</a></h2>
+<p>Requires <code>uv sync --extra telegram</code> and a bot token from BotFather.</p>
+<ul>
+<li>[ ] <code>uv run agentbus channels setup telegram</code> writes the <code>channels.telegram</code> block.</li>
+<li>[ ] <code>uv run agentbus doctor</code> → Telegram probe reports <code>ok</code>.</li>
+<li>[ ] <code>uv run agentbus launch agentbus.yaml</code> → gateway starts long-polling.</li>
+<li>[ ] DM the bot — reply arrives; first chunk carries <code>reply_to_message_id</code>, follow-ups don't.</li>
+<li>[ ] Message from a <code>chat_id</code> outside <code>allowed_chats</code> — no reply.</li>
+<li>[ ] Kill network briefly (wifi off 15s) — gateway retries with exponential backoff (see logs), recovers when network returns.</li>
+</ul>
+<hr />
+<h2 id="13-daemon">13. Daemon<a class="headerlink" href="#13-daemon" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] <code>uv run agentbus daemon start agentbus.yaml</code> → runs in foreground with pidfile locked.</li>
+<li>[ ] From another shell: <code>uv run agentbus daemon status</code> → <code>running</code>.</li>
+<li>[ ] Second <code>daemon start</code> attempt → exit code 2 (pidfile lock held).</li>
+<li>[ ] <code>uv run agentbus daemon stop</code> → SIGTERM, graceful drain, pidfile cleaned up.</li>
+<li>[ ] <code>uv run agentbus daemon install systemd agentbus.yaml</code> → prints a valid <code>.service</code> unit with the absolute <code>agentbus</code> path baked in.</li>
+</ul>
+<hr />
+<h2 id="14-launch-yaml-first">14. Launch (YAML-first)<a class="headerlink" href="#14-launch-yaml-first" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>uv<span class="w"> </span>run<span class="w"> </span>agentbus<span class="w"> </span>launch<span class="w"> </span>agentbus.yaml
+</code></pre></div>
+<ul>
+<li>[ ] Bus starts. All configured nodes appear in <code>agentbus node list</code> from a second terminal.</li>
+<li>[ ] SIGTERM → graceful drain (up to <code>bus.shutdown.drain_timeout</code>), session flushed, socket cleaned up.</li>
+<li>[ ] Second SIGTERM during drain → immediate cancel (escalation).</li>
+</ul>
+<hr />
+<h2 id="15-cli-introspection-against-a-running-bus">15. CLI introspection (against a running bus)<a class="headerlink" href="#15-cli-introspection-against-a-running-bus" title="Permanent link">&para;</a></h2>
+<p>From a second terminal while <code>agentbus chat</code> or <code>agentbus launch</code> is running:</p>
+<ul>
+<li>[ ] <code>uv run agentbus topic list</code> → shows all topics with retention + subscriber counts.</li>
+<li>[ ] <code>uv run agentbus topic echo /tools/request</code> → streams requests live as you prompt the chat.</li>
+<li>[ ] <code>uv run agentbus node list</code> → shows every node with state (RUNNING/ERROR).</li>
+<li>[ ] <code>uv run agentbus node info chat_planner</code> → shows subscriptions, publications, queue depth.</li>
+<li>[ ] <code>uv run agentbus graph --format mermaid</code> → copyable mermaid.</li>
+<li>[ ] <code>uv run agentbus graph --format dot</code> → copyable Graphviz.</li>
+<li>[ ] <code>uv run --socket-path /tmp/nonexistent.sock topic list</code> → clear error, not a traceback.</li>
+</ul>
+<hr />
+<h2 id="16-examples">16. Examples<a class="headerlink" href="#16-examples" title="Permanent link">&para;</a></h2>
+<p>Every example in <code>examples/</code> should run to completion without warnings:</p>
+<ul>
+<li>[ ] <code>uv run python examples/echo_agent/main.py</code></li>
+<li>[ ] <code>uv run python examples/sensor_pipeline/main.py</code></li>
+<li>[ ] <code>uv run python examples/tool_agent/main.py</code> (requires <code>ANTHROPIC_API_KEY</code>)</li>
+<li>[ ] <code>uv run python examples/bus_agent/main.py</code></li>
+<li>[ ] <code>uv run python examples/writer_critic/main.py</code></li>
+<li>[ ] <code>uv run python examples/swarm/main.py</code></li>
+</ul>
+<hr />
+<h2 id="17-smoke-matrix-quick-regression-after-any-large-change">17. Smoke matrix (quick regression after any large change)<a class="headerlink" href="#17-smoke-matrix-quick-regression-after-any-large-change" title="Permanent link">&para;</a></h2>
+<p>The 10-minute end-of-day version of this plan:</p>
+<ul>
+<li>[ ] <code>uv run pytest tests/ -q</code> → 473 pass</li>
+<li>[ ] <code>uv run ruff check .</code> → clean</li>
+<li>[ ] <code>uv run mypy agentbus</code> → clean (strict on public API)</li>
+<li>[ ] <code>uv run agentbus doctor</code> → ✓</li>
+<li>[ ] <code>uv run agentbus chat --headless</code> → send one prompt, get one reply</li>
+<li>[ ] <code>uv run agentbus chat</code> → TUI renders, toolbar readable, spinner fires, meter climbs</li>
+</ul>
+<p>If all six boxes tick, the release surface is stable enough for a tag.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
