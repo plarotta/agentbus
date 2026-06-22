@@ -7,10 +7,11 @@ import os
 import signal
 import time
 from collections import deque
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterator
 from typing import Any
 from uuid import uuid4
 
+from agentbus.core import BusCore, Hook, LogStore, Sink
 from agentbus.errors import (
     DuplicateNodeError,
     DuplicateTopicError,
@@ -103,6 +104,40 @@ class _BusHandle:
         return t.history(n)
 
 
+class _LocalBusTarget:
+    """LocalTarget adapter over a MessageBus: publishes through the full bus
+    pipeline (so transport clients reach Topic nodes) and subscribes via the
+    core. Satisfies transport.LocalTarget structurally.
+    """
+
+    def __init__(self, bus: "MessageBus") -> None:
+        self._bus = bus
+
+    @property
+    def schemas(self) -> dict:
+        return self._bus._registry
+
+    def publish(self, msg: Message) -> Message | None:
+        return self._bus.publish(
+            msg.topic,
+            msg.payload,
+            source_node=msg.source_node,
+            correlation_id=msg.correlation_id,
+            reply_to=msg.reply_to,
+        )
+
+    def subscribe(self, pattern: str, sink: Sink) -> Callable[[], None]:
+        return self._bus.subscribe(pattern, sink)
+
+    def latest_offset(self) -> int:
+        return self._bus.latest_offset()
+
+    def replay(
+        self, *, from_offset: int = 0, topic: str | None = None, limit: int | None = None
+    ) -> "Iterator[Message]":
+        return self._bus.replay(from_offset=from_offset, topic=topic, limit=limit)
+
+
 class MessageBus:
     """Typed pub/sub message bus for LLM agent orchestration.
 
@@ -119,10 +154,24 @@ class MessageBus:
         heartbeat_interval: float = HEARTBEAT_INTERVAL_DEFAULT,
         message_log_maxlen: int = MESSAGE_LOG_MAXLEN,
         socket_path: str | None = "/tmp/agentbus.sock",
+        log_store: "LogStore | None" = None,
     ) -> None:
         self._topics: dict[str, Topic] = {}
         self._nodes: dict[str, NodeHandle] = {}
-        self._message_log: deque[Message] = deque(maxlen=message_log_maxlen)
+        # Per-bus schema registry (topic name → model), populated by
+        # register_topic. Kept bus-local rather than using the module-global
+        # contracts.TOPIC_SCHEMAS so two live buses that reuse a topic name with
+        # different schemas can't poison each other's validation.
+        self._registry: dict[str, type] = {}
+        # Layer-2 routing core: owns the log, the hook chain, and fan-out to
+        # transport sinks. Node delivery still flows through Topic.put (for
+        # per-topic backpressure); the core is the chokepoint for validation,
+        # hooks, the log, and any attached transports. Pass a SqliteLog via
+        # log_store for durable, resumable replay.
+        self._core = BusCore(
+            schemas=self._registry, log_maxlen=message_log_maxlen, log_store=log_store
+        )
+        self._message_log: deque[Message] = self._core.log
         self._running = False
         self._total_messages = 0
         self._start_time: float = 0.0
@@ -145,6 +194,7 @@ class MessageBus:
         if topic.name in self._topics:
             raise DuplicateTopicError(f"Topic {topic.name!r} is already registered")
         self._topics[topic.name] = topic
+        self._registry[topic.name] = topic.schema
 
     def register_node(self, node: Node) -> None:
         """Register a node, wiring its subscriptions and validating its publications.
@@ -186,11 +236,19 @@ class MessageBus:
         *,
         source_node: str = "_bus_",
         correlation_id: str | None = None,
+        reply_to: str | None = None,
     ) -> Message:
         """Build a Message envelope, fan it out to subscribers, and return it.
 
         This is the bus-internal publish used by _BusHandle and the bus itself
         (heartbeat, lifecycle events). Nodes publish via BusHandle.publish().
+
+        The envelope is routed through the BusCore first (registry validation →
+        hook chain → append-to-log → fan-out to any attached transport sinks).
+        If a hook blocks the message, it is *not* delivered to nodes and the
+        original envelope is returned undelivered. Otherwise the (possibly
+        hook-transformed) envelope is fanned out to node queues via Topic.put,
+        which still owns per-topic backpressure.
         """
         topic = self._topics[topic_name]
         topic.validate_payload(payload)
@@ -199,17 +257,26 @@ class MessageBus:
             source_node=source_node,
             topic=topic_name,
             correlation_id=correlation_id,
+            reply_to=reply_to,
             payload=payload,
         )
 
+        # Core: validate (registry) → hooks → append log → transport-sink fan-out.
+        final = self._core.publish(msg)
+        if final is None:
+            # A hook blocked it: not logged, not delivered. Return the original
+            # envelope so callers keep a Message return type; it simply never
+            # reached any subscriber.
+            return msg
+        msg = final  # hooks may have transformed the envelope
+
         # Check if any pending request/reply future should be resolved
-        if correlation_id and (topic_name, correlation_id) in self._pending_requests:
-            future = self._pending_requests[(topic_name, correlation_id)]
+        if msg.correlation_id and (topic_name, msg.correlation_id) in self._pending_requests:
+            future = self._pending_requests[(topic_name, msg.correlation_id)]
             if not future.done():
                 future.set_result(msg)
 
         events = topic.put(msg)
-        self._message_log.append(msg)
         self._total_messages += 1
 
         # Publish backpressure events — guard against infinite recursion
@@ -222,6 +289,45 @@ class MessageBus:
                 self._publishing_backpressure = False
 
         return msg
+
+    # ── Layer-2 core delegation (hooks + transport sinks) ─────────────────────
+
+    def add_hook(self, hook: Hook) -> Callable[[], None]:
+        """Register a publish-time hook (policy / redaction / audit chokepoint).
+
+        ``hook(msg) -> Message | None``: return the (possibly modified) message
+        to pass it on, or None to block it. Returns a callable that removes the
+        hook. Runs for every publish, before the message is logged or delivered.
+        """
+        return self._core.add_hook(hook)
+
+    def subscribe(self, pattern: str, sink: Sink) -> Callable[[], None]:
+        """Attach a transport/inspection sink to the core for a topic pattern.
+
+        Returns an ``unsubscribe()`` callable. This is the seam transports use to
+        receive every envelope accepted by the bus; in-process nodes use the
+        Topic/queue path instead.
+        """
+        return self._core.subscribe(pattern, sink)
+
+    def local_target(self) -> "_LocalBusTarget":
+        """Return a ``LocalTarget`` adapter for in-process transport clients.
+
+        Unlike attaching to the bare core, a client driving this target reaches
+        in-process Topic nodes too, because its ``publish`` runs the full bus
+        pipeline (validation → hooks → log → node fan-out → transport sinks).
+        """
+        return _LocalBusTarget(self)
+
+    def latest_offset(self) -> int:
+        """Highest log offset assigned so far (0 if none) — the resume cutover."""
+        return self._core.latest_offset()
+
+    def replay(
+        self, *, from_offset: int = 0, topic: str | None = None, limit: int | None = None
+    ) -> "Iterator[Message]":
+        """Iterate logged messages with ``offset > from_offset`` (see BusCore.replay)."""
+        return self._core.replay(from_offset=from_offset, topic=topic, limit=limit)
 
     # ── Message dispatch (shared by spin_once and _node_loop) ─────────────────
 

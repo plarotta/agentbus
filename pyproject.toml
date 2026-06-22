@@ -22,6 +22,7 @@ mcp = ["mcp>=1.0"]
 slack = ["slack-bolt>=1.18"]
 telegram = ["httpx"]
 channels = ["slack-bolt>=1.18", "httpx"]
+ws = ["websockets>=12"]
 all = [
     "httpx",
     "anthropic",
@@ -32,6 +33,7 @@ all = [
     "questionary>=2.0",
     "mcp>=1.0",
     "slack-bolt>=1.18",
+    "websockets>=12",
 ]
 dev = [
     "pytest>=8.0",
@@ -44,6 +46,7 @@ dev = [
     "mypy>=1.11",
     "pre-commit>=3.7",
     "detect-secrets>=1.5",
+    "websockets>=12",
 ]
 
 [project.scripts]

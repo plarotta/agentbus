@@ -2,6 +2,7 @@ import asyncio
 from collections import deque
 from typing import Any, Generic, Literal, TypeVar
 
+from agentbus.contracts import register_schema
 from agentbus.errors import TopicSchemaError
 from agentbus.message import Message
 from agentbus.schemas.system import BackpressureEvent
@@ -51,6 +52,10 @@ class Topic(Generic[T]):
         self.description = description
         self.backpressure_policy = backpressure_policy
         self.schema: type = self.__class__._schema
+        # Topic[T] is sugar that freezes the cross-process contract: registering a
+        # topic also binds its name → schema in the global registry, so transports
+        # and remote clients can validate payloads without a Topic object.
+        register_schema(name, self.schema)
         self._subscribers: dict[str, asyncio.Queue] = {}
         # maxlen=None → unbounded deque that we never append to when retention=0
         self._buffer: deque[Message] = deque(maxlen=retention if retention > 0 else None)

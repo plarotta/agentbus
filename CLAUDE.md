@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Working Guidelines
+
+Behavioral guidelines to reduce common mistakes. They bias toward caution over speed; for trivial tasks, use judgment.
+
+**1. Think before coding.** State assumptions explicitly; if uncertain, ask. If multiple interpretations exist, present them — don't pick silently. If a simpler approach exists, say so and push back when warranted. If something is unclear, stop, name what's confusing, and ask — before implementing, not after.
+
+**2. Simplicity first.** Minimum code that solves the problem, nothing speculative. No features beyond what was asked, no abstractions for single-use code, no unrequested "flexibility"/configurability, no error handling for impossible scenarios. If you wrote 200 lines and it could be 50, rewrite it. Test: would a senior engineer call this overcomplicated?
+
+**3. Surgical changes.** Touch only what you must; clean up only your own mess. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match existing style even if you'd do it differently. Remove imports/vars/functions *your* changes orphaned — but leave pre-existing dead code (mention it, don't delete it) unless asked. Every changed line should trace directly to the request.
+
+**4. Goal-driven execution.** Turn tasks into verifiable goals before looping: "fix the bug" → "write a test that reproduces it, then make it pass"; "refactor X" → "ensure tests pass before and after". For multi-step work, state a brief plan with a verify check per step.
+
 ## Project Status
 
 MVP (Phases 1–6) and `agentbus chat` interactive mode are complete. The Tier 1/2 production-readiness work in `docs/production-plan.md` is also shipped (setup wizard, sandbox, permissions, daemon, graceful shutdown, structured logging, `/trace` + `/usage`). Tier 3 integrations (MCP, memory, swarm, Slack + Telegram channels) are shipped. See `CHANGELOG.md` for the ship log.
@@ -9,6 +21,32 @@ MVP (Phases 1–6) and `agentbus chat` interactive mode are complete. The Tier 1
 ## What AgentBus Is
 
 A ROS-inspired typed pub/sub message bus for LLM agent orchestration. Local-first, asyncio-native, introspection-first. The core idea: agents communicate through typed topics (pub/sub), not direct function calls. The bus owns routing; the harness owns the LLM loop. Neither knows the other's internals.
+
+AgentBus is a **general-purpose framework** — the message bus works with or without LLMs. The harness/chat surface is one implementation built on top, not the core. The framework is layered (contracts → core → bus runtime → transport → client → node), and every layer below the harness is LLM-free.
+
+## Layered architecture (contracts → client)
+
+The dependency arrows point one way: **Node → BusClient → Transport → (wire) → BusCore → Contracts**, and Contracts is the only thing every layer shares. Building bottom-up:
+
+- **Layer 1 — Contracts (`contracts.py`)**: `Envelope` (the *wire* form, `payload: dict`) + `TOPIC_SCHEMAS` registry (topic name → Pydantic model) + `register_schema`/`schema_for`/`validate_payload`. `Topic[T]` is sugar that registers its schema into the global registry on construction. `Envelope.from_message`/`to_message` convert to/from the in-process `Message[T]`; `to_message` re-validates against the registry (defense in depth — a rogue remote client can't inject a bad payload).
+- **Layer 2 — BusCore (`core.py`)**: the routing heart, extracted from `MessageBus`. Owns a pluggable `LogStore`, a pattern-keyed subscription table, a synchronous hook chain, and fan-out to abstract `Sink`s. `publish(msg) -> Message | None`: validate (registry) → run hooks (block via `None` / transform) → `store.append` (assigns the offset, log is truth, *before* fan-out) → deliver the stamped message to matching sinks, pruning any that raise `SinkClosed`. `Sink.deliver` is **non-blocking** (enqueue); real async I/O happens in a drainer task. `QueueSink` (bounded queue + drop policy + `on_drop`), `CallbackSink`. `replay(from_offset, topic, limit)` and `latest_offset()` delegate to the store. `bus._message_log` / `core.log` is the store's bounded in-memory `tail`.
+- **Layer 3 — Bus runtime (`bus.py`)**: `MessageBus` owns a `BusCore` and delegates validation + hooks + log to it (`bus._message_log is bus._core.log`). Public `bus.add_hook(hook)` and `bus.subscribe(pattern, sink)` delegate to the core. `bus.local_target()` returns a `_LocalBusTarget` adapter so an in-process transport client reaches Topic nodes (its `publish` runs the full pipeline). **Intermediate state (deliberate):** node delivery still flows through `Topic.put` (preserves per-topic backpressure); the core's sink registry is what transports attach to. Each bus has its **own** schema registry (`bus._registry`, populated by `register_topic`) passed to its core — *not* the module-global `TOPIC_SCHEMAS` — so two live buses reusing a topic name with different schemas can't poison each other's validation.
+- **Layer 3 — Bus server (`server.py`)**: `BusServer` wraps a `LocalTarget` in a WebSocket front door (the proposal's "daemon"; named `BusServer` to avoid colliding with `daemon.py`, the `agentbus launch` process-supervisor). It owns no routing — every `publish` op goes through the target's `publish`, every `subscribe` op attaches a per-connection `_ConnectionSink` whose deliveries land on an outbound queue that a per-connection writer task drains to the socket (keeping `Sink.deliver` synchronous while I/O stays async). `start()` binds an ephemeral port by default (`server.url` / `server.port`); `stop()` closes it. Optional `websockets` dep (`ws` extra), imported lazily.
+- **Layer 4 — Transport (`transport.py`)**: the client-side seam. 5-method `Transport` Protocol (`connect`, `close`, `send`, `announce_subscription`, `receive`). Two impls: `InMemoryTransport` drives a `LocalTarget` (a `BusCore` *or* `bus.local_target()`) directly in-process; `WebSocketTransport` talks to a `BusServer` over a WebSocket (JSON text frames, one op per frame: `publish`/`subscribe` client→server, `message` server→client). Both hydrate `Envelope → Message` at the boundary (re-validating against the registry). The *same* `BusClient` and server-side `BusCore` validation run over either — only the bytes move differently. `websockets` is imported lazily via `_require_websockets()` so `import agentbus` works without the `ws` extra and a misconfigured WS transport fails at construction, not mid-conversation.
+- **Layer 5 — BusClient (`client.py`)**: what agents touch. Wraps a `Transport`, adds typed `publish(topic, BaseModel)`, per-pattern `subscribe(pattern) -> asyncio.Queue[Envelope]`, and `request(topic, payload, reply_on, *, timeout)`. The one piece of real async plumbing is the background **receive loop**: one task drains `transport.receive()` and routes each envelope to a pending request future (matched by `correlation_id`) or to every matching subscription queue. A client is **not a node** — it declares nothing, publishes to any known topic, subscribes to any pattern. `request`'s reply arrives on `reply_on` (a registered topic with a schema), mirroring `BusHandle.request` so the same responder serves both.
+
+**Key design decisions (when extending these layers):**
+- `Message[T]` stays the in-process envelope (typed `payload`); `Envelope` is the wire form (`payload: dict`). Conversion happens at the transport boundary, not on every in-process hop — "typed at the call site, dict on the wire."
+- `BusCore` and its hooks are **synchronous** (`Hook = Callable[[Message], Message | None]`) to match `MessageBus.publish` (sync). Async hooks are a deliberate later extension — going async now would ripple `await` into every `publish` caller.
+- `Message` gained optional `reply_to` (request/reply rendezvous) and `offset` (log position, stamped by the store at append) fields, both default `None`.
+
+### Durable replay & resume
+
+The `LogStore` protocol (`core.py`) abstracts the log: `append(msg) -> stamped msg`, `read(from_offset, topic, limit)`, `latest_offset()`, `prune(before_offset)`, plus a bounded in-memory `tail` for `/trace`/introspection. Two impls:
+- **`InMemoryLog`** (default) — volatile deque; offsets reset on construction; `read` is best-effort over the tail. Preserves all pre-durability behavior.
+- **`SqliteLog`** (`journal.py`, no extra dep) — durable. Offset = `AUTOINCREMENT` PK (monotonic, never reused, survives restart and `prune`; `latest_offset` reads `sqlite_sequence` for the true high-water). Sync-from-sync-core like `memory.py`. `read` hydrates each row to a typed `Message` against the *current* registry and **skips with a warning** on schema drift. Wire it via `MessageBus(log_store=SqliteLog(path))` or `BusCore(log_store=...)`; the caller owns `close()`.
+
+**Resume contract** ("resume after kill"): a consumer persists the `offset` of the last message it fully processed, then on reconnect calls `subscribe(pattern, from_offset=N)`. The server (or `InMemoryTransport`) does an **atomic snapshot+attach** — because the core is synchronous, it reads `latest_offset()` (cutover `L`) and attaches the live sink in one uninterruptible step (no `await` between), then replays `(from_offset .. L]` ahead of the live stream `(L ..]`. No lock, no gap, no overlap. **At-least-once**, consumer-managed cursor. Replay reflects the same chokepoint as live (post-hook → redaction-safe). The server's per-connection outbound queue is **unbounded** so a large replay backlog is never dropped (a pathologically slow client grows memory until it disconnects — accepted v1 trade-off). Live (`from_offset=None`) subscriptions over WS have an inherent registration-ack race; use `from_offset` for reliable delivery. Auto-compaction is deferred — `prune(before_offset)` is the primitive.
 
 ## Commands
 
@@ -20,10 +58,15 @@ uv sync --extra mcp          # install the MCP SDK for mcp_servers: in agentbus.
 uv sync --extra slack        # install slack-bolt for channels.slack gateway
 uv sync --extra telegram     # install httpx for channels.telegram gateway
 uv sync --extra channels     # install both channel extras at once
+uv sync --extra ws           # install websockets for WebSocketTransport + BusServer
 uv sync --extra all          # install all optional deps
-uv run pytest tests/ -v      # run all tests (453 passing)
+uv run pytest tests/ -v      # run all tests (549 passing)
 uv run pytest tests/test_chat.py -v      # single test file
 uv run pytest tests/test_chat.py::TestChatSession::test_headless_echo -v  # single test
+uv run ruff check .          # lint (config in pyproject.toml [tool.ruff])
+uv run ruff format .         # format (line-length 100)
+uv run mypy agentbus         # type-check
+uv run pre-commit run --all-files   # ruff + mypy + detect-secrets hooks
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
 uv run agentbus setup        # interactive setup wizard (writes agentbus.yaml)
 uv run agentbus launch agentbus.yaml     # non-chat YAML launcher

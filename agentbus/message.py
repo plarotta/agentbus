@@ -27,4 +27,6 @@ class Message(BaseModel, Generic[T]):
     source_node: str  # set by the bus at publish time, never by the node
     topic: str
     correlation_id: str | None = None
+    reply_to: str | None = None  # rendezvous topic for request/reply, else None
+    offset: int | None = None  # monotonic log position, stamped by the log at append
     payload: T
