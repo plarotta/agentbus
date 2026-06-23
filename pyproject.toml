@@ -23,6 +23,7 @@ slack = ["slack-bolt>=1.18"]
 telegram = ["httpx"]
 channels = ["slack-bolt>=1.18", "httpx"]
 ws = ["websockets>=12"]
+ui = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
 all = [
     "httpx",
     "anthropic",
@@ -34,6 +35,8 @@ all = [
     "mcp>=1.0",
     "slack-bolt>=1.18",
     "websockets>=12",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
 ]
 dev = [
     "pytest>=8.0",
@@ -47,6 +50,9 @@ dev = [
     "pre-commit>=3.7",
     "detect-secrets>=1.5",
     "websockets>=12",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx",
 ]
 
 [project.scripts]
@@ -158,5 +164,11 @@ module = [
     "mcp.*",
     "slack_bolt",
     "slack_bolt.*",
+    "fastapi",
+    "fastapi.*",
+    "uvicorn",
+    "uvicorn.*",
+    "starlette",
+    "starlette.*",
 ]
 ignore_missing_imports = true
