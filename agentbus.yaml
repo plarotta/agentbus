@@ -3,3 +3,9 @@ model: claude-haiku-4-5-20251001
 tools:
 - file_read
 memory: false
+topics:
+- name: /sensor1
+  schema: agentbus_workflow.schemas.order_event:OrderEvent
+  retention: 2
+nodes:
+- class: agentbus_workflow.nodes.order_logger:OrderLogger

@@ -16,7 +16,7 @@ Behavioral guidelines to reduce common mistakes. They bias toward caution over s
 
 ## Project Status
 
-MVP (Phases 1–6) and `agentbus chat` interactive mode are complete. The Tier 1/2 production-readiness work in `docs/production-plan.md` is also shipped (setup wizard, sandbox, permissions, daemon, graceful shutdown, structured logging, `/trace` + `/usage`). Tier 3 integrations (MCP, memory, swarm, Slack + Telegram channels) are shipped. See `CHANGELOG.md` for the ship log.
+MVP (Phases 1–6) and `agentbus chat` interactive mode are complete. The Tier 1/2 production-readiness work in `docs/production-plan.md` is also shipped (setup wizard, sandbox, permissions, daemon, graceful shutdown, structured logging, `/trace` + `/usage`). Tier 3 integrations (MCP, memory, swarm, Slack + Telegram channels) are shipped. The **web UI** (`agentbus ui` — workflow designer + introspection + replay + LLM builder agent) is shipped; see "Web UI architecture" below and `docs/ui.md`. See `CHANGELOG.md` for the ship log.
 
 ## What AgentBus Is
 
@@ -59,6 +59,7 @@ uv sync --extra slack        # install slack-bolt for channels.slack gateway
 uv sync --extra telegram     # install httpx for channels.telegram gateway
 uv sync --extra channels     # install both channel extras at once
 uv sync --extra ws           # install websockets for WebSocketTransport + BusServer
+uv sync --extra ui           # install fastapi + uvicorn for the `agentbus ui` web dashboard
 uv sync --extra all          # install all optional deps
 uv run pytest tests/ -v      # run all tests (549 passing)
 uv run pytest tests/test_chat.py -v      # single test file
@@ -70,6 +71,7 @@ uv run pre-commit run --all-files   # ruff + mypy + detect-secrets hooks
 uv run agentbus chat         # launch interactive chat mode (reads ./agentbus.yaml)
 uv run agentbus setup        # interactive setup wizard (writes agentbus.yaml)
 uv run agentbus launch agentbus.yaml     # non-chat YAML launcher
+uv run agentbus ui                       # web dashboard: design workflows, introspect, replay
 ```
 
 `asyncio_mode = "auto"` is set in `pyproject.toml`, so async test functions do not need `@pytest.mark.asyncio`.
@@ -317,9 +319,10 @@ agentbus daemon install launchd agentbus.yaml   > ~/Library/LaunchAgents/com.age
 agentbus channels list                             # list registered channel plugins
 agentbus channels setup slack                      # legacy per-channel wizard → writes channels.slack into agentbus.yaml
 agentbus setup [--config PATH] [--force] [--skip-doctor]  # themed full-config wizard (questionary + ANSI theme)
+agentbus ui [--config PATH] [--host H] [--port P] [--workflow-root DIR]  # web dashboard (requires `ui` extra)
 ```
 
-`topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process.
+`topic`/`node`/`graph` connect to a running bus via the Unix socket at `/tmp/agentbus.sock`. `chat` is self-contained — it builds its own bus in-process. `ui` is also self-contained — it builds its own bus and serves a browser dashboard over HTTP/WS (no socket).
 
 ## Setup wizard architecture
 
@@ -352,3 +355,16 @@ Integration points:
 - **Tool definitions** live in `chat/_tools.py::TOOL_SCHEMAS` (LLM-facing JSON schema) and `TOOL_HANDLERS` (async handlers). Adding a tool requires an entry in both dicts plus listing its name in `ChatConfig.tools`.
 - **Tool permissions** live in `chat/_permissions.py`. `PermissionPolicy.check(tool, params)` returns a `PermissionCheck(decision, reason)` where `decision` is one of `"allow" | "deny" | "approval_required"`. Deny rules short-circuit before approval prompts, so `mode: approval_required` + `deny_commands: ["rm"]` on `bash` is safe. File path rules always `expanduser().resolve()` both the target and the rule root before comparison, so `foo/../../etc/passwd` can't escape an `allow_paths` allowlist. `ChatToolNode` takes `permissions=` and `approval_callback=` kwargs; the callback signature is `(tool: str, params: dict, reason: str) -> Awaitable[bool]` and is called only when a check returns `approval_required`. Any exception from the callback fails closed (treated as denial). The stdin-based prompt in `ChatSession._make_approval_callback` only wires up in `headless` mode with `_is_terminal()` — TUI mode passes `None`, so gated tools are denied until a modal dialog is added.
 - **Tool sandbox** lives in `chat/_sandbox.py`. `SandboxConfig` defaults to subprocess backend with `cpu_seconds=30`, `memory_mb=512`, `max_output_bytes=262144`. `build_sandbox(config)` picks `SubprocessSandbox` (default) or `DockerSandbox` (opt-in). Sandbox is **on by default** — a missing `sandbox:` block still gets conservative limits. Only `bash` and `code_exec` are sandboxed (tracked in `_tools.py::_SANDBOXED_TOOLS`); `file_read` / `file_write` rely on permissions alone since sandboxing file I/O would defeat its purpose. Ordering: `permissions.check()` runs *before* sandbox dispatch, so a denied command never reaches a child process. Subprocess backend specifics: `_preexec_limits` imports `resource` inside the closure (Windows-safe), applies `RLIMIT_CPU` and `RLIMIT_AS` (swallowing `ValueError/OSError` because macOS's `RLIMIT_AS` is unreliable — prefer Docker on Darwin for real memory isolation), and calls `os.setsid()` so timeout can `os.killpg(os.getpgid(proc.pid), 9)` the whole process group. Env is scrubbed to `DEFAULT_ENV_ALLOWLIST = ("PATH","HOME","LANG","LC_ALL","TERM")` plus `env_passthrough`. Workdir defaults to a per-invocation `tempfile.mkdtemp(prefix="agentbus-sandbox-")` that is `shutil.rmtree`'d in `finally`. Docker backend: `DockerSandbox.__init__` raises `RuntimeError` if `shutil.which("docker")` is `None`; argv wires `--rm --read-only --memory --cpus -v host:/workspace:rw -w /workspace` plus `--network none` unless `network: true`. Timeout cushion is `timeout + 2s` (container startup overhead).
+
+## Web UI architecture (`agentbus/ui/`)
+
+`agentbus ui` serves a browser dashboard to **design** workflows (visually + via an LLM helper), **introspect** a live bus, and **replay** durable history. FastAPI + uvicorn are an optional dependency (the `ui` extra), imported lazily via `_require_fastapi()` (mirrors `transport._require_websockets`), so `import agentbus` works without them and a missing install fails fast at `agentbus ui` startup. See `docs/ui.md` for the user-facing surface.
+
+- **One process owns both the bus and the server** (daemon-style). `server.py::serve` inserts `--workflow-root` (default CWD) onto `sys.path`, builds a `BusSupervisor` + `WorkflowManager`, then `uvicorn.run`s the FastAPI app. The app's **lifespan** starts the bus (`supervisor.start()`) and stops it on shutdown.
+- **`BusSupervisor` (`server.py`)** holds the live bus + its `spin()` task. `start`/`stop`/`reload`. `reload()` builds the *new* bus from config **before** tearing down the old one, so an import error in freshly generated code leaves the running bus untouched. It disables the introspection Unix socket by default (`disable_socket=True`) to avoid colliding with a separately-running daemon. **Known limit:** reload cancels the spin task, so node `on_shutdown` hooks don't run on apply (design-time tool — acceptable).
+- **REST endpoints read the live bus, writes go to config + codegen.** Reads serialize the existing `introspection.py` dataclasses with `dataclasses.asdict` (`/api/graph`, `/api/topics`, `/api/nodes`); `/api/history` uses `Envelope.from_message(...).model_dump(mode="json")`. Writes (`/api/topics`, `/api/nodes`, `/api/config`, `/api/nodes/{cls}/hooks`) go through `WorkflowManager`; `/api/apply` calls `supervisor.reload()`.
+- **`/ws/stream` is a thin adapter over `BusServer`'s replay logic.** It reuses `server._ConnectionSink` + `bus.local_target()` and the same atomic *snapshot-offset → subscribe → replay (offset ≤ cutover) → live* sequence as `BusServer._on_subscribe` (gap-free; durable with `SqliteLog`). `?pattern=&from_offset=`.
+- **Codegen, not declarative nodes** (`codegen.py`). Nodes/schemas stay real Python — the UI *generates* them. `generate_schema_source`/`generate_node_source` are pure; `CodegenWorkspace` writes per-entity modules under `<root>/<package>/{schemas,nodes}/<snake>.py` (default package `agentbus_workflow`), then `validate_import`s them (reloads + `importlib.invalidate_caches`) so syntax/import errors surface eagerly. `agentbus.yaml` references them by import path, so `build_bus_from_config` loads them unchanged. **Payloads published from generated hooks must be the topic's Pydantic model, not a dict** (the registry rejects dicts) — the builder agent is instructed accordingly.
+- **`WorkflowManager` (`workflow.py`)** is the single write path shared by the REST endpoints and the builder agent (so they can't drift). It owns `agentbus.yaml` (upsert topics/nodes by name) + the generated package + `<package>/_manifest.json` (structured specs, so editing a hook regenerates the file from its spec instead of parsing Python). Atomic writes via `harness/session.py::_atomic_write_text`.
+- **Builder helper agent (`builder.py`)** is built on the **bus-free `Harness`** (per the harness-isolation invariant), not a bus node — running a second planner inside the user's workflow bus would pollute their topics. `WorkflowBuilder` owns one `Harness` + `Session`; its `tool_executor` dispatches `BUILDER_TOOL_SCHEMAS` (`read_workflow`, `inspect_graph`, `create_topic`, `create_node`, `set_hook`, `apply_changes`) straight against the `WorkflowManager` + `BusSupervisor`. Provider deps validated eagerly (fail-fast). Only Anthropic carries the system prompt natively; openai/ollama get it **prepended to the first turn** (`_pending_prefix`, same trick as `swarm.py`). The server constructs it lazily on first `/api/builder` call (provider/model from the config's top-level `provider:`/`model:` keys, default Anthropic + `claude-haiku-4-5-20251001`).
+- **Frontend** (`ui/frontend/`) is a Vite + React + React Flow SPA built to `ui/static/` (served by FastAPI `StaticFiles`, mounted last so `/api` + `/ws` win). Five views: Graph (React Flow), Inspect (history + live tail), Replay (`from_offset` scrub), Design (forms → codegen + Apply), Builder (chat). `npm run build` in `ui/frontend/` regenerates `ui/static/` — commit the built assets so `agentbus ui` works without a Node toolchain.

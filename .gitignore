@@ -37,3 +37,6 @@ dist/
 
 # Local socket files
 *.sock
+
+# Default generated workflow package from `agentbus ui` (per-project, not committed)
+/agentbus_workflow/

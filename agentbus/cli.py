@@ -247,6 +247,26 @@ def build_parser() -> argparse.ArgumentParser:
     channels_setup.add_argument("channel", help="Channel name (e.g. slack, telegram)")
     channels_setup.add_argument("--config", default="agentbus.yaml")
 
+    # ── ui ───────────────────────────────────────────────────────────────────
+    ui_parser = subparsers.add_parser(
+        "ui",
+        help="Serve the web dashboard — design workflows, introspect, replay",
+    )
+    ui_parser.add_argument(
+        "--config",
+        default="agentbus.yaml",
+        metavar="PATH",
+        help="Path to agentbus.yaml (default: ./agentbus.yaml)",
+    )
+    ui_parser.add_argument("--host", default="127.0.0.1", help="Bind host")
+    ui_parser.add_argument("--port", type=int, default=8000, help="Bind port")
+    ui_parser.add_argument(
+        "--workflow-root",
+        default=None,
+        metavar="DIR",
+        help="Where generated node/schema code is written (default: CWD)",
+    )
+
     # ── daemon ───────────────────────────────────────────────────────────────
     daemon_parser = subparsers.add_parser(
         "daemon",
@@ -364,6 +384,8 @@ def app(argv: list[str] | None = None) -> int:
             force=args.force,
             run_doctor=not args.skip_doctor,
         )
+    if args.command == "ui":
+        return _run_ui(args)
     if args.command == "daemon":
         return _run_daemon(args)
     if args.command == "channels":
@@ -429,6 +451,29 @@ def _run_channels(args) -> int:
 
     print(f"unknown channels subcommand: {args.channels_command}", file=sys.stderr)
     return 2
+
+
+def _run_ui(args) -> int:
+    """Entry point for `agentbus ui`."""
+    try:
+        from agentbus.ui import serve
+    except RuntimeError as exc:  # FastAPI/uvicorn not installed
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        serve(
+            args.config,
+            host=args.host,
+            port=args.port,
+            codegen_root=args.workflow_root,
+        )
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def _run_daemon(args) -> int:
