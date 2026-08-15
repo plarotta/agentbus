@@ -260,6 +260,25 @@
   
   
   
+    <li class="md-tabs__item">
+      <a href="graph-engineering/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Graph Engineering
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
     
     
       <li class="md-tabs__item">
@@ -564,6 +583,33 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="graph-engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph Engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -578,10 +624,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -599,8 +645,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -957,7 +1003,14 @@
 
 
 <h1 id="agentbus">AgentBus<a class="headerlink" href="#agentbus" title="Permanent link">&para;</a></h1>
-<p>A ROS-inspired typed message bus for agentic LLM orchestration. Local-first. asyncio-native. Introspection-first.</p>
+<p>A graph engineering toolkit for agentic LLM systems. AgentBus makes topology
+explicit: typed topics are the edges, nodes are the components, and the bus
+records the messages that actually traveled through the graph. Local-first,
+asyncio-native, introspection-first.</p>
+<p>Start with the <a href="graph-engineering/">graph engineering guide</a> to see how to
+design and operate an agent graph. The included <code>agentbus chat</code> command is a
+complete reference implementation—not a separate toy application—and uses the
+same planner, tool, memory, and channel nodes available to your own system.</p>
 <h2 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
 <p>Most agent frameworks are monolithic loops: the orchestrator calls a tool, gets a result, feeds it back, repeats. This works until you need more than one agent, until you want to observe what's happening, or until you need to route messages between components without hardwiring every dependency.</p>
 <p>AgentBus separates concerns the way ROS does for robotics: agents communicate through <strong>typed topics</strong>, not direct function calls. The bus owns routing. The harness owns the LLM loop. Neither knows the other's internals.</p>
