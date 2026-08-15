@@ -35,7 +35,10 @@ from agentbus.transport import (
 )
 
 try:
-    __version__ = _pkg_version("agentbus")
+    # The installable distribution is intentionally distinct from the public
+    # import package: users install ``agentbus-graph`` and write
+    # ``import agentbus``. importlib metadata must use the distribution name.
+    __version__ = _pkg_version("agentbus-graph")
 except PackageNotFoundError:  # editable install before build
     __version__ = "0.0.0+unknown"
 

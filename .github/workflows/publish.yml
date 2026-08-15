@@ -3,6 +3,12 @@ name: publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to verify and publish (for example, v0.3.0)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,14 +18,12 @@ jobs:
     name: verify and build distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
+        uses: astral-sh/setup-uv@v9
 
       - name: Install project
         run: uv sync --extra dev --extra all
@@ -33,7 +37,7 @@ jobs:
 
       - name: Verify release tag matches package version
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
         run: |
           PACKAGE_VERSION="$(uv run python -c 'from agentbus import __version__; print(__version__)')"
           test "$RELEASE_TAG" = "v$PACKAGE_VERSION" || {
