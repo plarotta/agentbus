@@ -4,12 +4,60 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentbus"
-version = "0.2.0"
-description = "ROS-inspired typed pub/sub message bus for LLM agent orchestration"
+version = "0.3.0"
+description = "Graph engineering infrastructure for observable, typed LLM agent systems"
+readme = "README.md"
 requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Peter Larotta" },
+]
+keywords = [
+    "ai-agents",
+    "agent-orchestration",
+    "asyncio",
+    "graph-engineering",
+    "llm",
+    "message-bus",
+    "multi-agent",
+    "observability",
+    "pubsub",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "pydantic>=2.0",
     "pyyaml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/plarotta/agentbus"
+Documentation = "https://plarotta.github.io/agentbus"
+Repository = "https://github.com/plarotta/agentbus"
+Issues = "https://github.com/plarotta/agentbus/issues"
+
+[tool.hatch.build]
+# The React source is useful to contributors, but its locally installed
+# dependencies must never be traversed when creating an sdist or wheel. The
+# dashboard served at runtime is the committed, prebuilt static bundle below.
+exclude = [
+    "/agentbus/ui/frontend/node_modules",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentbus"]
+include = [
+    "agentbus/py.typed",
+    "agentbus/ui/static/**",
 ]
 
 [project.optional-dependencies]

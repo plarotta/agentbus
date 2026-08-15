@@ -145,6 +145,29 @@ class ChatSession:
 
     # ── Bus construction ─────────────────────────────────────────────────────
 
+    def _ensure_session(self) -> Session:
+        """Return the active session, loading it exactly once when requested.
+
+        Runtime services such as memory need the session identifier before the
+        bus is constructed. Keeping session creation in one place prevents a
+        restored chat session from being recorded under a placeholder ID.
+        """
+        if self._session is not None:
+            return self._session
+
+        if self._session_id:
+            try:
+                self._session = Session.load(self._session_id)
+            except Exception:
+                print(
+                    f"[warn] Could not load session {self._session_id!r}, starting fresh.",
+                    file=sys.stderr,
+                )
+                self._session = Session()
+        else:
+            self._session = Session()
+        return self._session
+
     def _build_bus(self) -> MessageBus:
         bus = MessageBus(socket_path=self._socket_path)
 
@@ -155,20 +178,7 @@ class ChatSession:
         bus.register_topic(Topic[BusToolResult]("/tools/result", retention=20))
         bus.register_topic(Topic[PlannerStatus]("/planning/status", retention=20))
 
-        # Load or create session
-        session: Session
-        if self._session_id:
-            try:
-                session = Session.load(self._session_id)
-            except Exception:
-                print(
-                    f"[warn] Could not load session {self._session_id!r}, starting fresh.",
-                    file=sys.stderr,
-                )
-                session = Session()
-        else:
-            session = Session()
-        self._session = session
+        session = self._ensure_session()
 
         # Register nodes
         extra_tools = []
@@ -405,6 +415,11 @@ class ChatSession:
 
         _make_provider(self._config)  # raises SystemExit immediately if deps missing
 
+        # Establish the session before opening integrations. In particular,
+        # MemoryRuntime persists its session_id and must never use a placeholder
+        # for a session that will be restored a few lines later.
+        session = self._ensure_session()
+
         # Open MCP subprocesses in THIS task so the anyio cancel scopes inside
         # the SDK are entered and exited in the same task (the runtime's
         # aclose() happens in the finally below, also in this task).
@@ -423,7 +438,7 @@ class ChatSession:
                 from pathlib import Path as _Path
 
                 self._memory_runtime = await open_memory_runtime(
-                    session_id=(self._session.session_id if self._session else "unknown"),
+                    session_id=session.session_id,
                     db_path=_Path(self._config.memory_settings["db_path"]),
                     embeddings=embeddings,
                 )

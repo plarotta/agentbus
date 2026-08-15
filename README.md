@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A typed, observable message bus for building and debugging multi-agent LLM systems.</strong>
+  <strong>Graph engineering infrastructure for observable, typed LLM agent systems.</strong>
 </p>
 
 <p align="center">
@@ -12,9 +12,33 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-Not another agent framework. It is the infrastructure layer that makes multi-agent systems inspectable, decoupled, and composable — locally first, on a single machine, with zero cloud dependency.
+AgentBus is a graph engineering toolkit for teams building serious agent systems.
+It makes the architecture explicit: typed topics are the edges, nodes are the
+components, and every message is inspectable. The included `agentbus chat`
+application proves the model end-to-end, then gives you a working starting
+point for your own graph.
+
+Local-first, asyncio-native, and zero-cloud by default.
 
 ---
+
+## Why graph engineering?
+
+LLM applications become difficult to change when their topology only exists in
+control flow. AgentBus moves the topology into a visible, testable graph:
+
+- **Contracts live on edges.** Pydantic schemas define exactly what crosses a
+  topic boundary.
+- **Components stay replaceable.** A planner, tool, reviewer, gateway, or
+  sub-agent only knows the topics it speaks—not its neighbors' implementations.
+- **Production behavior is inspectable.** Render the graph, tail any topic,
+  trace a correlation ID, inspect queue pressure, or replay durable history.
+- **Reliability is structural.** Bounded queues, circuit breakers, request
+  timeouts, lifecycle events, graceful draining, and structured logs operate at
+  graph boundaries rather than as ad-hoc application code.
+
+Read the [graph engineering guide](docs/graph-engineering.md) for the workflow
+and the built-in dashboard's role in it.
 
 ## Why AgentBus?
 
@@ -156,17 +180,30 @@ That's the whole model: declare topics, register nodes, publish, spin. No framew
 
 ---
 
-## First run
+## Ship a chatbot in minutes
 
-The fastest way to a working chat session is the interactive wizard. It picks a provider + model, selects built-in tools, toggles memory, and walks each channel plugin's own sub-flow:
+The package includes a complete local-first chatbot: an LLM planner, streaming
+tool status, sessions, slash-command observability, permission controls, and
+sandboxed `bash` / `code_exec` tools. Run the guided setup, then start chatting:
 
 ```bash
-uv sync --extra tui
+pip install "agentbus[tui,anthropic]"  # or: openai, ollama
+agentbus setup
+agentbus chat
+```
+
+With uv:
+
+```bash
+uv sync --extra tui --extra anthropic
 uv run agentbus setup        # writes ./agentbus.yaml atomically (.bak preserved)
 uv run agentbus chat         # interactive chat TUI with live tool-call streaming
 ```
 
-`setup` and `chat` share a single visual identity — block-art banner, cyan accent, muted `·` separators. See [`docs/cli.md`](docs/cli.md#setup) for flags and exit codes.
+The setup wizard checks dependencies and config up front. Chat persists sessions
+atomically, surfaces tool activity, and exposes `/graph`, `/trace`, and `/usage`
+without leaving the conversation. See [`docs/cli.md`](docs/cli.md#setup) for
+flags and exit codes.
 
 ---
 
@@ -261,6 +298,7 @@ Full extras list: `anthropic`, `openai`, `ollama`, `cli`, `tui`, `mcp`, `slack`,
 | Doc                                    | Contents                                                                                        |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | [`docs/concepts.md`](docs/concepts.md) | Design philosophy, layer architecture, core abstractions, message lifecycle, wildcard patterns  |
+| [`docs/graph-engineering.md`](docs/graph-engineering.md) | How to design, inspect, and evolve agent graphs with AgentBus |
 | [`docs/bus.md`](docs/bus.md)           | `Message[T]`, `Topic[T]`, `Node`, `BusHandle`, `MessageBus` — all methods with signatures       |
 | [`docs/harness.md`](docs/harness.md)   | `Harness`, `Session`, providers, `ToolSchema`, `Extension` hooks, compaction, testing interface |
 | [`docs/schemas.md`](docs/schemas.md)   | All Pydantic schemas (`harness`, `common`, `system`) and introspection dataclasses              |

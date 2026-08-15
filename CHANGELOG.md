@@ -6,6 +6,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-15
+
+### Added
+- **Graph-engineering release surface.** The package and documentation now lead
+  with AgentBus's core discipline: explicit typed edges, inspectable topology,
+  and replayable graph execution. A new graph-engineering guide explains the
+  design workflow and positions the bundled chat application as a complete
+  reference graph.
+- **PEP 561 type marker.** Published distributions now declare their inline
+  type information with `agentbus/py.typed`.
+- **Trusted-publishing release workflow.** Publishing a GitHub release builds,
+  verifies, and uploads the source distribution and wheel through PyPI's
+  OpenID Connect trusted publisher flow.
+
+### Fixed
+- **Chat memory session identity.** Chat sessions are now established before
+  memory is opened, so persisted turns always use the real new or resumed
+  session ID instead of the `unknown` placeholder.
+- **Wheel and sdist construction with the dashboard source checked out.**
+  Frontend `node_modules` is excluded from package builds while the committed
+  static dashboard bundle remains available at runtime.
+
 ### Added
 - **Sandboxed `bash` and `code_exec` tools.** New `agentbus.chat._sandbox`
   module ships two backends:

@@ -20,7 +20,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">◈</span> AgentBus
+          AgentBus<span className="mark">ui</span>
         </div>
         <nav className="tabs">
           {TABS.map((t) => (
@@ -59,18 +59,34 @@ function layoutGraph(graph) {
     nodes.push({
       id: "n:" + n.name,
       position: { x: 40, y: 40 + i * rowH },
-      data: { label: `${n.name}\n${n.state} · ${n.messages_received}↓ ${n.messages_published}↑` },
+      data: {
+        label: (
+          <div className="node-card">
+            <div className="node-name">{n.name}</div>
+            <div className="node-meta">
+              {n.state.toLowerCase()} · {n.messages_received}↓ {n.messages_published}↑
+            </div>
+          </div>
+        ),
+      },
       className: "rf-node node-" + n.state.toLowerCase(),
-      style: { whiteSpace: "pre-line" },
     });
   });
   graph.topics.forEach((t, i) => {
     nodes.push({
       id: "t:" + t.name,
       position: { x: 40 + colW * 1.4, y: 40 + i * rowH },
-      data: { label: `${t.name}\n${t.schema_name} · ${t.message_count} msgs` },
+      data: {
+        label: (
+          <div className="topic-card">
+            <div className="topic-name">{t.name}</div>
+            <div className="topic-meta">
+              {t.schema_name} · {t.message_count} msgs
+            </div>
+          </div>
+        ),
+      },
       className: "rf-topic",
-      style: { whiteSpace: "pre-line" },
     });
   });
   graph.edges.forEach((e, i) => {
@@ -81,8 +97,8 @@ function layoutGraph(graph) {
       source,
       target,
       animated: e.direction === "pub",
-      markerEnd: { type: MarkerType.ArrowClosed },
-      style: { stroke: e.direction === "pub" ? "#5eead4" : "#7dd3fc" },
+      markerEnd: { type: MarkerType.ArrowClosed, color: e.direction === "pub" ? "#2a43d0" : "#aaa494" },
+      style: { stroke: e.direction === "pub" ? "#2a43d0" : "#aaa494", strokeWidth: 1.5 },
     });
   });
   return { nodes, edges };
@@ -110,12 +126,12 @@ function GraphView() {
     <div className="graph-wrap">
       {err && <div className="banner err">{err}</div>}
       <ReactFlow nodes={flow.nodes} edges={flow.edges} fitView proOptions={{ hideAttribution: true }}>
-        <Background color="#1f2937" gap={20} />
-        <Controls />
+        <Background color="#d8d2c2" gap={26} size={1} />
+        <Controls showInteractive={false} />
       </ReactFlow>
       <div className="legend">
-        <span><i className="dot teal" /> publishes</span>
-        <span><i className="dot blue" /> subscribes</span>
+        <span><i className="bar pub" /> publishes</span>
+        <span><i className="bar sub" /> subscribes</span>
       </div>
     </div>
   );
@@ -245,7 +261,7 @@ function ReplayView() {
         </label>
         <span className="muted">latest: {latest ?? "—"}</span>
         <button className="primary" onClick={start}>
-          ▶ Replay
+          Replay
         </button>
       </div>
       <MessageTable rows={rows} />
@@ -378,7 +394,7 @@ function ApplyBar({ onMsg }) {
     <div className="applybar">
       <span className="muted">Changes are written to agentbus.yaml + generated code. Apply to restart the bus.</span>
       <button className="apply" disabled={busy} onClick={apply}>
-        {busy ? "Applying…" : "⟳ Apply changes"}
+        {busy ? "Applying…" : "Apply changes"}
       </button>
     </div>
   );

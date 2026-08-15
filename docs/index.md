@@ -1,6 +1,14 @@
 # AgentBus
 
-A ROS-inspired typed message bus for agentic LLM orchestration. Local-first. asyncio-native. Introspection-first.
+A graph engineering toolkit for agentic LLM systems. AgentBus makes topology
+explicit: typed topics are the edges, nodes are the components, and the bus
+records the messages that actually traveled through the graph. Local-first,
+asyncio-native, introspection-first.
+
+Start with the [graph engineering guide](graph-engineering.md) to see how to
+design and operate an agent graph. The included `agentbus chat` command is a
+complete reference implementation—not a separate toy application—and uses the
+same planner, tool, memory, and channel nodes available to your own system.
 
 ## The problem
 

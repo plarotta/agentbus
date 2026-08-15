@@ -42,6 +42,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Concepts: concepts.md
+  - Graph Engineering: graph-engineering.md
   - Reference:
     - Bus Layer: bus.md
     - Harness Layer: harness.md

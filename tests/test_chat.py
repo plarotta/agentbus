@@ -66,6 +66,19 @@ class TestChatConfig:
         assert loaded.tools == ["bash"]
 
 
+class TestChatSessionLifecycle:
+    def test_session_is_created_once_and_reused_by_bus(self):
+        session = _make_session()
+
+        first = session._ensure_session()
+        bus = session._build_bus()
+
+        assert session._ensure_session() is first
+        assert session._planner is not None
+        assert session._planner.session is first
+        assert "planner" in {node.name for node in bus.nodes()}
+
+
 # ---------------------------------------------------------------------------
 # Tool handler tests
 # ---------------------------------------------------------------------------
