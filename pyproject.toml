@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentbus"
+name = "agentbus-graph"
 version = "0.3.0"
 description = "Graph engineering infrastructure for observable, typed LLM agent systems"
 readme = "README.md"

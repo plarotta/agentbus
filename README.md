@@ -187,7 +187,7 @@ tool status, sessions, slash-command observability, permission controls, and
 sandboxed `bash` / `code_exec` tools. Run the guided setup, then start chatting:
 
 ```bash
-pip install "agentbus[tui,anthropic]"  # or: openai, ollama
+pip install "agentbus-graph[tui,anthropic]"  # or: openai, ollama
 agentbus setup
 agentbus chat
 ```
@@ -285,8 +285,8 @@ uv sync --extra all             # everything: tui, mcp, channels, all providers
 Or with pip:
 
 ```bash
-pip install "agentbus[anthropic]"
-pip install "agentbus[all]"
+pip install "agentbus-graph[anthropic]"
+pip install "agentbus-graph[all]"
 ```
 
 Full extras list: `anthropic`, `openai`, `ollama`, `cli`, `tui`, `mcp`, `slack`, `telegram`, `channels`, `all`.

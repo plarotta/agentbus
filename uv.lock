@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.12"
 
 [[package]]
-name = "agentbus"
+name = "agentbus-graph"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [

@@ -20,6 +20,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   verifies, and uploads the source distribution and wheel through PyPI's
   OpenID Connect trusted publisher flow.
 
+### Changed
+- **Distribution name: `agentbus-graph`.** The PyPI distribution is now named
+  `agentbus-graph` to avoid a collision with an existing project. The product
+  name, `agentbus` import package, CLI command, configuration, and repository
+  remain unchanged.
+
 ### Fixed
 - **Chat memory session identity.** Chat sessions are now established before
   memory is opened, so persisted turns always use the real new or resumed

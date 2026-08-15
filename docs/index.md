@@ -36,7 +36,7 @@ With [uv](https://github.com/astral-sh/uv) (recommended):
 uv sync --extra anthropic     # or: openai, ollama, cli, tui, mcp, slack, telegram, channels, all
 ```
 
-Plain pip works too — `pip install "agentbus[anthropic]"`, etc.
+Plain pip works too — `pip install "agentbus-graph[anthropic]"`, etc.
 
 ## First run
 
