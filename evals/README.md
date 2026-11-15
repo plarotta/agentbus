@@ -20,11 +20,16 @@ list, with the date. Null prices are rejected.
 | Object | Stored in | Key fields |
 | --- | --- | --- |
 | `TaskRecord` | JSON Lines registry | `task_id`, `benchmark`, `family`, `structure`, `grader`, `split`, `vetted` |
-| `Attempt` | SQLite `attempts` table | `task_id`, `arm`, `model`, `harness`, `run_set`, `attempt`, `passed`, `cost_usd`, `settings` |
+| `Attempt` | SQLite `attempts` table | `task_id`, `arm`, `model`, `harness`, `run_set`, `attempt`, `passed`, `score`, `cost_usd`, `settings` |
 
 An attempt is unique on `(task_id, arm, model, harness, run_set, attempt)`. `arm` is `solo`
 (one model in one public harness), `agentbus` or `omega`. `run_set` is `screening` or
 `scoring`.
+
+`score` is optional partial credit between 0 and 1, for benchmarks whose published number
+is a mean score and not a pass rate. `report success` and `report validate` average `score`
+where an attempt has one and `passed` (0 or 1) where it does not, so the `pass_rate` column
+is a mean score for those rows. `report compare` uses `passed` only.
 
 ## Reports
 

@@ -29,6 +29,14 @@ def test_unknown_cost_round_trips_as_none(tmp_path):
         assert store.query()[0].cost_usd is None
 
 
+def test_score_round_trips_and_is_bounded(tmp_path):
+    with ResultsStore(tmp_path / "r.sqlite") as store:
+        store.add([mk(attempt=0, score=0.25, passed=False), mk(attempt=1)])
+        assert [a.score for a in store.query()] == [0.25, None]
+    with pytest.raises(ValueError):
+        mk(score=1.5)
+
+
 def test_duplicate_rejected_and_nothing_inserted(tmp_path):
     with ResultsStore(tmp_path / "r.sqlite") as store:
         store.add([mk("t", 0)])

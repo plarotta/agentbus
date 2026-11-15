@@ -21,6 +21,7 @@ _COLUMNS = [
     "settings",
     "trajectory",
     "source",
+    "score",
 ]
 _KEY = ("task_id", "arm", "model", "harness", "run_set", "attempt")
 
@@ -34,6 +35,7 @@ class Attempt(BaseModel):
     run_set: Literal["screening", "scoring"]
     attempt: int = Field(ge=0)  # 0-based
     passed: bool
+    score: float | None = Field(default=None, ge=0, le=1)  # partial credit, if graded
     cost_usd: float | None = Field(default=None, ge=0)  # None means unknown
     input_tokens: int = 0
     output_tokens: int = 0
@@ -51,7 +53,7 @@ class ResultsStore:
             "task_id TEXT, arm TEXT, model TEXT, harness TEXT, harness_version TEXT, "
             "run_set TEXT, attempt INTEGER, passed INTEGER, cost_usd REAL, "
             "input_tokens INTEGER, output_tokens INTEGER, wall_seconds REAL, "
-            "settings TEXT, trajectory TEXT, source TEXT, "
+            "settings TEXT, trajectory TEXT, source TEXT, score REAL, "
             "UNIQUE (task_id, arm, model, harness, run_set, attempt))"
         )
 

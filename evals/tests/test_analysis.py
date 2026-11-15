@@ -106,6 +106,25 @@ def test_success_table_mean_over_tasks_not_attempts():
         success_table([mk("zzz")], registry)
 
 
+def test_success_table_uses_score_when_present():
+    registry = reg(t1="f", t2="f")
+    attempts = [mk("t1", 0, False, score=0.5), mk("t2", 0, True)]
+    [row] = success_table(attempts, registry)
+    # t1 counts its partial score 0.5, t2 has no score so counts passed = 1.0
+    assert row["pass_rate"] == pytest.approx(75.0)
+
+
+def test_compare_ignores_score():
+    registry = reg(t1="f")
+    out = compare(
+        [mk("t1", arm="omega", passed=False, score=0.9)],
+        [mk("t1", passed=False)],
+        registry,
+        n_boot=50,
+    )
+    assert out["counts"]["novel"] == 0
+
+
 def test_validate_statuses_and_settings_subset():
     tasks = [f"t{i}" for i in range(40)]
     registry = reg(**dict.fromkeys(tasks, "f"))

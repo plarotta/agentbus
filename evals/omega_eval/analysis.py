@@ -19,9 +19,10 @@ def _bootstrap(
 
 
 def _task_rates(attempts: list[Attempt]) -> dict[str, float]:
-    by_task: dict[str, list[bool]] = defaultdict(list)
+    """Mean per task of `score` where an attempt has one, else of `passed` (0 or 1)."""
+    by_task: dict[str, list[float]] = defaultdict(list)
     for a in attempts:
-        by_task[a.task_id].append(a.passed)
+        by_task[a.task_id].append(float(a.passed) if a.score is None else a.score)
     return {t: sum(v) / len(v) for t, v in by_task.items()}
 
 
@@ -30,7 +31,8 @@ def _wilson(p: float, n: int) -> tuple[float, float]:
 
     Unlike a bootstrap it stays informative at 0% and 100%, where every resample is
     identical. It treats tasks as independent trials, so it is approximate when a task
-    has several attempts.
+    has several attempts. For a mean of partial scores it is at least as wide as needed,
+    because a value bounded by 0 and 1 has variance at most p(1 - p).
     """
     z = 1.959964
     denom = 1 + z * z / n
