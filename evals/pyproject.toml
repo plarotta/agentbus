@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omega-eval"
+version = "0.1.0"
+description = "Benchmark task registry, attempt store and reports for evaluating multi-agent systems"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.0", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+inspect = ["inspect-ai"]
+dev = ["pytest>=8.0", "ruff>=0.6.0"]
+
+[project.scripts]
+omega-eval = "omega_eval.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["omega_eval"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

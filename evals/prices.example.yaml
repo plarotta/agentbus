@@ -1,0 +1,7 @@
+# Fill these in from your provider's price list and record the date you read them.
+# Prices are US dollars per million tokens. Null values are rejected on load.
+prices:
+  gemma-4-26b-a4b: {input_per_mtok: null, output_per_mtok: null, as_of: null, provider: null}
+  qwen3-coder-30b-a3b: {input_per_mtok: null, output_per_mtok: null, as_of: null, provider: null}
+  gpt-oss-20b: {input_per_mtok: null, output_per_mtok: null, as_of: null, provider: null}
+  ministral-3-8b: {input_per_mtok: null, output_per_mtok: null, as_of: null, provider: null}

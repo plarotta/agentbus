@@ -1,0 +1,44 @@
+# Published reference numbers used to check the evaluation harness against known results.
+#
+# Every value was read from the cited source on 2026-11-15. Rates are percentages.
+# `family` is the task name inside the benchmark. `settings` lists run settings that must
+# match for a measured result to be comparable; scores move a lot when they differ.
+#
+# Carnegie Mellon business-task suite: default (unadapted) harness, test split (60% of each
+# task), three runs per configuration, OpenHands software-agent-sdk.
+# BrowseComp-Plus: authors' search agent, top 5 results per search cut to 512 tokens,
+# gpt-4.1 as judge. The paper does not report step limits, temperature, number of runs or
+# variance, so treat these as loose references.
+
+references:
+  # --- Carnegie Mellon business tasks, gemma-4-26b-a4b ---
+  - {benchmark: cmu-business-tasks, family: attendance-auditing, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 91.7, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: budget-approval, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 75.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: stock-alert, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 5.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: anomaly-detection, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 5.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: playwright-testing, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 9.9, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: website-management, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 1.1, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: code-refactoring, model: gemma-4-26b-a4b, harness: openhands-sdk-default, expected_rate: 32.2, source: "https://arxiv.org/html/2607.08938"}
+
+  # --- Carnegie Mellon business tasks, qwen3-coder-30b-a3b ---
+  - {benchmark: cmu-business-tasks, family: attendance-auditing, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 23.7, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: budget-approval, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 61.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: stock-alert, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 9.4, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: anomaly-detection, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 1.1, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: playwright-testing, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 31.4, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: website-management, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 1.1, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: code-refactoring, model: qwen3-coder-30b-a3b, harness: openhands-sdk-default, expected_rate: 60.6, source: "https://arxiv.org/html/2607.08938"}
+
+  # --- Carnegie Mellon business tasks, ministral-3-8b ---
+  - {benchmark: cmu-business-tasks, family: attendance-auditing, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 0.2, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: budget-approval, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 28.8, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: stock-alert, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 0.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: anomaly-detection, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 0.0, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: playwright-testing, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 0.4, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: website-management, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 5.6, source: "https://arxiv.org/html/2607.08938"}
+  - {benchmark: cmu-business-tasks, family: code-refactoring, model: ministral-3-8b, harness: openhands-sdk-default, expected_rate: 31.7, source: "https://arxiv.org/html/2607.08938"}
+
+  # --- BrowseComp-Plus, gpt-oss-20b, keyword retrieval (BM25) ---
+  - {benchmark: browsecomp-plus, model: gpt-oss-20b, settings: {retriever: bm25, reasoning_effort: low}, expected_rate: 4.11, source: "https://arxiv.org/pdf/2508.06600"}
+  - {benchmark: browsecomp-plus, model: gpt-oss-20b, settings: {retriever: bm25, reasoning_effort: medium}, expected_rate: 16.39, source: "https://arxiv.org/pdf/2508.06600"}
+  - {benchmark: browsecomp-plus, model: gpt-oss-20b, settings: {retriever: bm25, reasoning_effort: high}, expected_rate: 21.08, source: "https://arxiv.org/pdf/2508.06600"}
