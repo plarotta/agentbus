@@ -5,9 +5,9 @@ import sys
 import yaml
 
 from omega_eval import analysis
-from omega_eval.importers import import_inspect_log, import_jsonl
+from omega_eval.importers import import_cmu_summary, import_inspect_log, import_jsonl
 from omega_eval.pricing import load_prices
-from omega_eval.registry import load_registry, save_registry
+from omega_eval.registry import TaskRecord, load_registry, save_registry
 from omega_eval.results import ResultsStore
 
 
@@ -35,13 +35,17 @@ def _emit(data: object, rows: list[dict], as_json: bool) -> None:
         _print_table(rows)
 
 
-def _registry_add(args: argparse.Namespace) -> None:
-    records = load_registry(args.registry)
-    for task_id, rec in load_registry(args.file).items():
+def _merge_registry(path: str, new: dict[str, TaskRecord]) -> None:
+    records = load_registry(path)
+    for task_id, rec in new.items():
         if task_id in records and records[task_id] != rec:
             raise ValueError(f"task_id {task_id} already in registry with different content")
         records[task_id] = rec
-    save_registry(args.registry, records)
+    save_registry(path, records)
+
+
+def _registry_add(args: argparse.Namespace) -> None:
+    _merge_registry(args.registry, load_registry(args.file))
 
 
 def _registry_list(args: argparse.Namespace) -> None:
@@ -72,6 +76,19 @@ def _import_inspect(args: argparse.Namespace) -> None:
     with ResultsStore(args.db) as store:
         store.add(attempts)
     print(f"imported {len(attempts)} attempts")
+
+
+def _import_cmu(args: argparse.Namespace) -> None:
+    attempts, tasks = import_cmu_summary(
+        args.file,
+        optimized=args.optimized,
+        models=args.model or None,
+        run_set=args.run_set,
+    )
+    _merge_registry(args.registry, {t.task_id: t for t in tasks})
+    with ResultsStore(args.db) as store:
+        store.add(attempts)
+    print(f"imported {len(attempts)} attempts and {len(tasks)} tasks")
 
 
 def _report_success(args: argparse.Namespace) -> None:
@@ -149,6 +166,19 @@ def _parser() -> argparse.ArgumentParser:
             ("--prices", {"required": True}),
             ("--task-id-prefix", {"default": ""}),
             ("--exclude-model", {"action": "append", "default": []}),
+        ],
+    )
+    command(
+        "results",
+        "import-cmu",
+        _import_cmu,
+        [
+            ("file", {}),
+            db,
+            reg,
+            ("--optimized", {"action": "store_true"}),
+            ("--model", {"action": "append", "default": []}),
+            ("--run-set", {"default": "screening", "choices": ["screening", "scoring"]}),
         ],
     )
     command("report", "success", _report_success, [db, reg, ("--run-set", {}), js])

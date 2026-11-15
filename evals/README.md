@@ -36,6 +36,7 @@ is a mean score for those rows. `report compare` uses `passed` only.
 ```
 omega-eval registry add tasks_new.jsonl --registry tasks.jsonl
 omega-eval results import-jsonl runs.jsonl --db results.sqlite --prices prices.yaml
+omega-eval results import-cmu summary.json --db results.sqlite --registry tasks.jsonl [--optimized] [--model NAME] [--run-set screening|scoring]
 
 omega-eval report success  --db results.sqlite --registry tasks.jsonl
 omega-eval report validate --db results.sqlite --registry tasks.jsonl --references references.yaml

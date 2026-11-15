@@ -1,9 +1,22 @@
 import json
+from collections.abc import Collection
 from pathlib import Path
 from typing import Literal
 
 from omega_eval.pricing import Price, cost_usd
+from omega_eval.registry import TaskRecord
 from omega_eval.results import Attempt
+
+# CMU task id -> (family, grader), from the benchmark's scoring code.
+_CMU_TASKS: dict[str, tuple[str, Literal["tests", "state_check", "mixed"]]] = {
+    "attendance_payroll_audit_s2l_high": ("attendance-auditing", "state_check"),
+    "budget_approval_s2l_high": ("budget-approval", "mixed"),
+    "woocommerce_stock_alert_s2l": ("stock-alert", "state_check"),
+    "machine_operating_s2l": ("anomaly-detection", "state_check"),
+    "webtest": ("playwright-testing", "tests"),
+    "webarena": ("website-management", "mixed"),
+    "refactorbench": ("code-refactoring", "tests"),
+}
 
 
 def import_jsonl(path: str | Path, prices: dict[str, Price] | None = None) -> list[Attempt]:
@@ -79,3 +92,73 @@ def import_inspect_log(
             )
         )
     return attempts
+
+
+def import_cmu_summary(
+    path: str | Path,
+    *,
+    optimized: bool = False,
+    models: Collection[str] | None = None,
+    run_set: Literal["screening", "scoring"] = "screening",
+) -> tuple[list[Attempt], list[TaskRecord]]:
+    """Test-split attempts and task records from the CMU benchmark's `summary.json`.
+
+    Rows are filtered and de-duplicated as the authors do: a row is optimized when its
+    `rollout_version` ends with "best", and per (task, model) the row with the highest
+    validation score is kept. A null score counts as 0.0 and a null cost stays unknown.
+    """
+    best: dict[tuple[str, str], dict] = {}
+    for row in json.loads(Path(path).read_text())["rows"]:
+        if row["status"] != "ok" or row["task_id"] not in _CMU_TASKS:
+            continue
+        if row["rollout_version"].endswith("best") != optimized:
+            continue
+        if models is not None and row["model_name"] not in models:
+            continue
+        key = (row["task_id"], row["model_name"])
+        if key not in best or row["val"]["score"] > best[key]["val"]["score"]:
+            best[key] = row
+
+    harness = "openhands-sdk-adapted" if optimized else "openhands-sdk-default"
+    attempts = []
+    for row in best.values():
+        family = _CMU_TASKS[row["task_id"]][0]
+        for rec in row["workspace_records"]:
+            if rec["split"] != "test":
+                continue
+            score = rec["score"] or 0.0
+            attempts.append(
+                Attempt(
+                    task_id=f"{family}-ex{rec['example_id']:03d}",
+                    arm="solo",
+                    model=row["model_name"],
+                    harness=harness,
+                    run_set=run_set,
+                    attempt=rec["rollout_id"],
+                    passed=score >= 1 - 1e-9,
+                    score=score,
+                    cost_usd=rec["cost"],
+                    input_tokens=rec["prompt_tokens"],
+                    output_tokens=rec["completion_tokens"],
+                    wall_seconds=rec["end_to_end_latency_sec"],
+                    settings={
+                        "split": "test",
+                        "rollout_version": row["rollout_version"],
+                        "prompt_name": row["prompt_name"],
+                    },
+                    trajectory=rec["workspace_dir"],
+                    source=str(path),
+                )
+            )
+    grader_of = {family: grader for family, grader in _CMU_TASKS.values()}
+    tasks = {}
+    for a in attempts:
+        family = a.task_id.rsplit("-ex", 1)[0]
+        tasks[a.task_id] = TaskRecord(
+            task_id=a.task_id,
+            benchmark="cmu-business-tasks",
+            family=family,
+            grader=grader_of[family],
+            split="test",
+        )
+    return attempts, sorted(tasks.values(), key=lambda t: t.task_id)

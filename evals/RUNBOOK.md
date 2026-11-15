@@ -1,8 +1,27 @@
 # Runbook: reproduce two published benchmarks and compare with omega-eval
 
-Written 2026-11-15. Nothing in this file has been run. Commands come from files in the two repositories at the pinned commits listed below. Each command block says where it came from as `path:lines`. A command that was changed is marked "Adapted:" and the change is stated. A line marked `CHECK:` is something that cannot be settled by reading files. It needs a run or an account. Each `CHECK:` is listed again in section 7.
+Written 2026-11-15. Nothing in this file has been run, except section 0. Commands come from files in the two repositories at the pinned commits listed below. Each command block says where it came from as `path:lines`. A command that was changed is marked "Adapted:" and the change is stated. A line marked `CHECK:` is something that cannot be settled by reading files. It needs a run or an account. Each `CHECK:` is listed again in section 7.
 
 Abbreviations: API = application programming interface. CMU = Carnegie Mellon University. BM25 = a keyword-ranking formula (Best Matching 25). JSON = JavaScript Object Notation. JSONL = JSON Lines (one JSON object per line). CSV = comma-separated values. TSV = tab-separated values. YAML = a configuration file format. LLM = large language model. LM = language model. SDK = software development kit. HF = Hugging Face. RPM = requests per minute. TPM = tokens per minute. GEPA = the optimizer the CMU paper uses to adapt harnesses (not needed here). `uv` = a Python package manager. LiteLLM = a Python library that sends one request format to many model providers. DSPy = a Python library for LLM programs (the CMU code builds its language models with it).
+
+Decided on 2026-11-15: run all three CMU models; use OpenRouter for `gpt-oss-20b`; keep `gpt-4.1` as the BrowseComp-Plus judge. The commands below already follow these choices. Groq is kept in the B5 table for reference only.
+
+## 0. Free check, already run: the authors' published records
+
+This is the one part of the file that has been run. It makes no model calls.
+
+The CMU replication package holds the authors' own per-example results in `CMU:replication_package/outputs/data/summary.json` (103 runs, 28,950 records). Loading their default-harness test records for the three models and comparing with the paper:
+
+```bash
+omega-eval results import-cmu <clone>/replication_package/outputs/data/summary.json --db authors.sqlite --registry authors_tasks.jsonl --model gemma-4-26b-a4b --model qwen3-coder-30b-a3b --model ministral-3-8b
+omega-eval report validate --db authors.sqlite --registry authors_tasks.jsonl --references references.yaml
+```
+
+Result on 2026-11-15: 3,510 attempts over 390 test examples were imported, and all 21 CMU reference rows came out `consistent`, each within 0.05 percentage points of the published number. That confirms the importer, the split and the mean-score calculation. It says nothing about whether your own runs through a hosted API will match; only Part A answers that.
+
+Keep the authors' records and your own runs in separate databases. They share model and harness names, so in one database the reports would mix them.
+
+`scripts/cmu_headroom.py` reads the same file and counts, per task, how many test examples each model and the three-model pool solve in the default and the adapted harness.
 
 ## Sources used
 
@@ -357,7 +376,9 @@ Field mapping from `records.tsv` (columns at `collect_run_data.py:252-275,452-47
 | `source` | the run folder (`.../rollouts/baseline`) |
 | `harness_version` | `2d31e1791a68f89554aa81c97d58fd62a636f4f4` |
 
-Fixed values: `arm` = `solo`, `harness` = `openhands-sdk-default`, `run_set` = `screening`, `model` = the model name, `settings` = `{"max_examples": 100, "n_responses": 3, "prompt_name": "<prompt>", "rollout_version": "baseline", "split": "test"}`. Load test-split rows only (`split == test`). Keep `cache_read_tokens` and the other `records.tsv` columns in your converter output folder; omega-eval has no field for them.
+Fixed values: `arm` = `solo`, `harness` = `openhands-sdk-default`, `run_set` = `screening`, `model` = the model name, `settings` = `{"max_examples": 100, "n_responses": 3, "prompt_name": "<prompt>", "rollout_version": "baseline", "split": "test"}`. Load test-split rows only (`split == test`).
+
+Do not write your own converter. Run `omega-eval results import-cmu` (Carnegie Mellon University, CMU) on the `summary.json` that step A7 produces. It reads the per-example records inside `summary.json`, applies the mapping above (with three differences: `trajectory` is the workspace folder, `source` is the path of `summary.json`, and `harness_version` and the `max_examples` and `n_responses` settings are not set), writes the task records into the registry and adds the attempts to the results database. Section 5 shows the command. `summary.json` has no `cache_read_tokens` column or conversation id, so those are not imported; omega-eval has no field for them either.
 
 ---
 
@@ -581,7 +602,7 @@ Fixed values: `arm` = `solo`, `model` = `gpt-oss-20b`, `harness` = `browsecomp-p
 
 ## 5. Load results into omega-eval and read the report
 
-Work in the `evals` folder of the agentbus repository. Write your task records and results as JSON Lines (one object per line), using the field lists below.
+Work in the `evals` folder of the agentbus repository. For the CMU suite, skip the JSON Lines files below and use the `import-cmu` command shown below. For BrowseComp-Plus, write your task records and results as JSON Lines (one object per line), using the field lists below.
 
 Task records, one per task. For the CMU suite: `benchmark` = `cmu-business-tasks`, `family` = the paper's task name (`attendance-auditing`, `budget-approval`, `stock-alert`, `anomaly-detection`, `playwright-testing`, `website-management`, `code-refactoring`). For BrowseComp-Plus: `benchmark` = `browsecomp-plus`, `family` = empty.
 
@@ -607,7 +628,13 @@ The values are illustrative. For CMU records, `harness` = `openhands-sdk-default
 
 Unknown values: leave `cost_usd` out (or set it to `null`) when you do not know the cost. It is stored as unknown, not as zero, and the `validate` report does not need it. Leave `input_tokens`, `output_tokens` and `wall_seconds` out when unknown; do not set them to `null`. Extra keys inside `settings` are accepted as long as their values are strings, numbers or booleans.
 
-Load:
+Load the CMU results with the importer. It uses the `summary.json` from step A7, keeps test-split records and sets every CMU field described above, including `score`, `settings` and the task records with their `grader` values. Pass `--model` once per model to keep, and `--optimized` only for the authors' optimized prompts (harness `openhands-sdk-adapted`).
+
+```bash
+omega-eval results import-cmu generated/summary_gemma/summary.json --db results.sqlite --registry tasks.jsonl --model gemma-4-26b-a4b
+```
+
+Load BrowseComp-Plus records, or any records you wrote yourself:
 
 ```bash
 omega-eval registry add tasks_new.jsonl --registry tasks.jsonl

@@ -68,3 +68,35 @@ def test_errors_return_2(tmp_path, capsys):
     write_jsonl(bad, [ROWS[0] | {"attempt": -1}])
     assert main(["results", "import-jsonl", str(bad), "--db", db]) == 2
     assert "line 1" in capsys.readouterr().err
+
+
+def test_import_cmu(tmp_path, capsys):
+    record = {
+        "example_id": 42,
+        "rollout_id": 0,
+        "split": "test",
+        "workspace_dir": "ws",
+        "score": 0.5,
+        "cost": 1.0,
+        "end_to_end_latency_sec": 1.0,
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+    }
+    row = {
+        "task_id": "webtest",
+        "model_name": "m",
+        "prompt_name": "p",
+        "rollout_version": "baseline",
+        "status": "ok",
+        "val": {"score": 0.5},
+        "workspace_records": [record],
+    }
+    summary = tmp_path / "summary.json"
+    summary.write_text(json.dumps({"rows": [row]}))
+    db, reg = str(tmp_path / "r.sqlite"), str(tmp_path / "reg.jsonl")
+    args = ["results", "import-cmu", str(summary), "--db", db, "--registry", reg]
+    assert main([*args, "--model", "m"]) == 0
+    assert "imported 1 attempts and 1 tasks" in capsys.readouterr().out
+    assert load_registry(reg)["playwright-testing-ex042"].grader == "tests"
+    assert main(args) == 2  # the same attempts again are rejected
+    assert "duplicate attempt" in capsys.readouterr().err
