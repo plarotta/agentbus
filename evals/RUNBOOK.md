@@ -4,7 +4,7 @@ Written 2026-11-15. Nothing in this file has been run, except section 0. Command
 
 Abbreviations: API = application programming interface. CMU = Carnegie Mellon University. BM25 = a keyword-ranking formula (Best Matching 25). JSON = JavaScript Object Notation. JSONL = JSON Lines (one JSON object per line). CSV = comma-separated values. TSV = tab-separated values. YAML = a configuration file format. LLM = large language model. LM = language model. SDK = software development kit. HF = Hugging Face. RPM = requests per minute. TPM = tokens per minute. GEPA = the optimizer the CMU paper uses to adapt harnesses (not needed here). `uv` = a Python package manager. LiteLLM = a Python library that sends one request format to many model providers. DSPy = a Python library for LLM programs (the CMU code builds its language models with it).
 
-Decided on 2026-11-15: run all three CMU models; use OpenRouter for `gpt-oss-20b`; keep `gpt-4.1` as the BrowseComp-Plus judge. The commands below already follow these choices. Groq is kept in the B5 table for reference only.
+Decided on 2026-11-15: Part A (the CMU suite) is not being run. The authors' published records (section 0) are used as the default-harness results for the three CMU models, so the roughly $463 reproduction is skipped. Part A stays in this file because the same setup is needed later to run other systems on these tasks; it has had no check that a hosted-API setup reproduces the paper. Part B goes ahead: OpenRouter for `gpt-oss-20b`, and `gpt-4.1` as the BrowseComp-Plus judge. Groq is kept in the B5 table for reference only.
 
 ## 0. Free check, already run: the authors' published records
 
@@ -108,6 +108,8 @@ cd evals && pip install -e ".[dev]"
 ---
 
 ## 3. Part A: CMU business-task suite
+
+**Not being run (decided 2026-11-15).** See the note at the top and section 0. Kept for later use.
 
 ### Task names used in this runbook
 
